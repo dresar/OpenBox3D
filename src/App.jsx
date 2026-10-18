@@ -1,5 +1,5 @@
-// Kerangka meja kerja: bilah atas, empat area kerja dan bilah status; mulai langsung masuk ke meja kerja (tanpa beranda proyek, proyek berupa berkas lokal .boxproj)
 import React, { useState } from 'react';
+import { LoginPage } from './LoginPage';
 import { store, useStore } from './state/store.js';
 import { geomOf, creaseSegsOf } from './dieline/geom.js';
 import { TPLS } from './dieline/templates.js';
@@ -16,7 +16,6 @@ import { chooseProjectFile, downloadProject, projectStateOf } from './projects/p
 
 const REPO_URL = 'https://github.com/yuyou-dev/OpenBox3D';
 
-// Logo Octocat GitHub (tautan kode sumber bilah atas)
 function GithubMark({ size = 15, color = '#e8dfcc' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block' }}>
@@ -26,6 +25,10 @@ function GithubMark({ size = 15, color = '#e8dfcc' }) {
 }
 
 export function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem('openbox3d_auth') === 'true';
+  });
+
   const s = useStore();
   const [iconOk, setIconOk] = useState(true);
   const m = store.mat();
@@ -37,6 +40,11 @@ export function App() {
   const warnN = s.layers.reduce((a, l) => a + warnsOf(l, creaseSegs, g.sbb).length, 0);
   const okAll = warnN === 0;
   const tabs = [['structure', 'Struktur'], ['design', 'Desain'], ['three', '3D'], ['output', 'Ekspor']];
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('openbox3d_auth');
+    setIsAuthenticated(false);
+  };
 
   const importProject = async () => {
     try {
@@ -53,6 +61,10 @@ export function App() {
     if (!window.confirm('Atur ulang ke kotak contoh? Perubahan yang belum diekspor akan hilang.')) return;
     store.reset(await loadPresetBox());
   };
+
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f1e8', fontSize: 13 }}>
@@ -80,6 +92,7 @@ export function App() {
         <button onClick={exportProject} style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #6a6151', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#e8dfcc', whiteSpace: 'nowrap' }}>Ekspor Proyek</button>
         <button onClick={resetPreset} title="Pulihkan ke kotak contoh bawaan" style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #6a6151', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#e8dfcc', whiteSpace: 'nowrap' }}>Atur Ulang Kotak Contoh</button>
         <button onClick={async () => { try { await exportPDF(s, m, s.pdfMode); } catch (e) { alert(e.message || String(e)); } }} style={{ padding: '7px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, background: '#9a5b1f', color: '#fff', whiteSpace: 'nowrap', flex: 'none' }}>Ekspor PDF</button>
+        <button onClick={handleLogout} style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #6a6151', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#e8dfcc', whiteSpace: 'nowrap' }}>Keluar</button>
         <a href={REPO_URL} target="_blank" rel="noopener noreferrer" title="Repositori Sumber Terbuka GitHub" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderRadius: 6, border: '1px solid #6a6151', fontSize: 12, color: '#e8dfcc', textDecoration: 'none', whiteSpace: 'nowrap', flex: 'none' }}><GithubMark />GitHub</a>
       </div>
 
@@ -101,3 +114,5 @@ export function App() {
     </div>
   );
 }
+
+export default App;
