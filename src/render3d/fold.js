@@ -1,21 +1,21 @@
-// 折叠树：面板几何（矩形板=BoxGeometry 高细分，异形板=ExtrudeGeometry）+ 展开图图集 UV 重映射
-// 每面板标注 uvRect（2D 刀版坐标 mm）+ attach（2D 中与母板的相邻边），
-// buildNode 累计 rotZ（0/90/180/270），按规则自动求 flip——主体板零手工方向标定
+// Pohon lipat: geometri panel (panel persegi panjang = BoxGeometry subdivisi tinggi, panel bentuk khusus = ExtrudeGeometry) + pemetaan ulang UV atlas bentangan
+// Setiap panel ditandai dengan uvRect (koordinat garis potong 2D mm) + attach (tepi bersebelahan dengan panel induk di 2D),
+// buildNode mengakumulasi rotZ (0/90/180/270), otomatis menghitung flip sesuai aturan - orientasi manual nol untuk panel utama
 import * as THREE from 'three';
 import { discBbox } from '../dieline/templates.js';
 
 const deg = d => d * Math.PI / 180;
 export const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
-// 归一化：(up,vp) = f(un,vn, rotZ)
+// Normalisasi: (up,vp) = f(un,vn, rotZ)
 function normUV(un, vn, rotZ) {
   if (rotZ === 0) return [un, vn];
   if (rotZ === 90) return [1 - vn, un];
   if (rotZ === 180) return [1 - un, 1 - vn];
   return [vn, 1 - un]; // 270
 }
-// 累计 rotZ 下面板的"向外生长方向"（归一系中）：far 保持，near +180，xmin +90，xmax +270
-// 注意：pg 系 +y = 2D 系 -y（2D 顶插舌在母板上方，3D far 翼在母板 +y 侧），故 v 映射为 (1-vp)
+// Arah pertumbuhan keluar panel di bawah rotZ akumulatif (dalam sistem ternormalisasi): far tetap, near +180, xmin +90, xmax +270
+// Catatan: sistem pg +y = sistem 2D -y (tutup sisip atas 2D berada di atas panel induk, sayap far 3D di sisi +y panel induk), maka v dipetakan menjadi (1-vp)
 const OUT = { 0: '+v', 90: '-u', 180: '-v', 270: '+u' };
 function flipOf(rotZ, attach) {
   if (!attach) return '';
@@ -28,7 +28,7 @@ function flipOf(rotZ, attach) {
 const ROTADD = { far: 0, near: 180, xmin: 90, xmax: 270 };
 const rectPt = (uvRect, up, vp) => [uvRect[0] + up * uvRect[2], uvRect[1] + (1 - vp) * uvRect[3]];
 
-// 面板顶面 UV 重写：顶点(局部 x,y) → 归一(rotZ) → flip → uvRect → 图集 UV；内面 → 纸色角点
+// Penulisan ulang UV permukaan atas panel: vertex (lokal x,y) → ternormalisasi (rotZ) → flip → uvRect → UV atlas; permukaan dalam → sudut warna kertas
 function retopUV(geo, lx, ly, rotZ, flip, uvRect, sbb, innerUV, faceZ) {
   const pos = geo.attributes.position, uv = geo.attributes.uv;
   const sw = sbb[2] - sbb[0], sh = sbb[3] - sbb[1];
@@ -40,7 +40,7 @@ function retopUV(geo, lx, ly, rotZ, flip, uvRect, sbb, innerUV, faceZ) {
     uv.setXY(i, (x2 - sbb[0]) / sw, 1 - (y2 - sbb[1]) / sh);
   };
   if (geo.groups && geo.groups.length) {
-    // ExtrudeGeometry：group0 = 顶/底面（z=faceZ 为外面），group1 = 侧面（不动）
+    // ExtrudeGeometry: group0 = permukaan atas/bawah (z=faceZ adalah sisi luar), group1 = sisi samping (tetap)
     const g0 = geo.groups[0];
     for (let i = g0.start; i < g0.start + g0.count; i++) {
       if (Math.abs(pos.getZ(i) - faceZ) < 1e-6) map(i);
@@ -50,7 +50,7 @@ function retopUV(geo, lx, ly, rotZ, flip, uvRect, sbb, innerUV, faceZ) {
   uv.needsUpdate = true;
 }
 
-// BoxGeometry（矩形板）：pz 面 = 外面（重映射 + 可高细分承载压纹置换），nz/侧面 = 纸色/纸芯
+// BoxGeometry (panel persegi panjang): permukaan pz = sisi luar (pemetaan ulang + subdivisi tinggi untuk pergeseran emboss), nz/sisi samping = warna kertas/inti kertas
 function boxUV(geo, lx, ly, t, rotZ, flip, uvRect, sbb, innerUV) {
   const pos = geo.attributes.position, uv = geo.attributes.uv;
   const sw = sbb[2] - sbb[0], sh = sbb[3] - sbb[1];
@@ -65,7 +65,7 @@ function boxUV(geo, lx, ly, t, rotZ, flip, uvRect, sbb, innerUV) {
     } else uv.setXY(i, innerUV[0], innerUV[1]);
   }
   uv.needsUpdate = true;
-  // 材质组：px,nx,py,ny 侧面=1(core)；pz,nz=0(face)
+  // Grup material: sisi samping px,nx,py,ny=1(core); pz,nz=0(face)
   geo.groups.forEach((g, gi) => { g.materialIndex = gi >= 4 ? 0 : 1; });
 }
 
@@ -73,7 +73,7 @@ function shapeOf(T, kind, len, out, n) {
   const S = new T.Shape();
   const q = (cx, cy, x, y) => S.quadraticCurveTo(cx, cy, x, y);
   if (kind === 'disc') {
-    // 正 N 边形盖：附著边 (0,0)-(len,0)，凸弧 +y
+    // Tutup poligon beraturan N sisi: tepi sambungan (0,0)-(len,0), busur cembung +y
     const N = n || 24, e = 2 * Math.PI / N;
     const a = len / (2 * Math.tan(Math.PI / N)), Rp = len / (2 * Math.sin(Math.PI / N));
     const cx = len / 2, cy = a, base = Math.atan2(-a, -len / 2);
@@ -95,7 +95,7 @@ function shapeOf(T, kind, len, out, n) {
     S.moveTo(0.5, 0); S.lineTo(len - 0.5, 0); S.lineTo(len - 0.5, out - rr);
     q(len - 0.5, out, len - 0.5 - rr, out); S.lineTo(2, out); S.lineTo(0.5, out - 2);
   } else if (kind === 'lid') {
-    S.moveTo(0, 0); S.lineTo(len, 0); S.lineTo(len, out); S.lineTo(0, out); // 方形盖（2026-08 起，与 2D flapLid 同步去 1mm 内收）
+    S.moveTo(0, 0); S.lineTo(len, 0); S.lineTo(len, out); S.lineTo(0, out); // Tutup persegi (sejak 2026-08, sinkron dengan flapLid 2D tanpa lekukan 1mm)
   } else {
     S.moveTo(0, 0); S.lineTo(len, 0); S.lineTo(len, out); S.lineTo(0, out);
   }
@@ -105,7 +105,7 @@ function shapeOf(T, kind, len, out, n) {
 export class Folder {
   constructor(T, sbb, innerUV) {
     this.T = T; this.sbb = sbb; this.innerUV = innerUV || [0.0002, 0.9998];
-    this.hasEmb = false; // 由 engine 在 build 前设置：压纹面板高细分
+    this.hasEmb = false; // Diatur oleh engine sebelum build: subdivisi tinggi untuk panel emboss
   }
   edgeFrame(lx, ly, edge) {
     if (edge === 'far') return { px: 0, py: ly, rz: 0, len: lx };
@@ -117,7 +117,7 @@ export class Folder {
     const T = this.T, t = this._t;
     let geo;
     if (kind === 'rect') {
-      // 压纹时高细分（顶面承载置换）；段数随面板尺寸
+      // Subdivisi tinggi saat emboss (permukaan atas memuat perpindahan); segmen mengikuti ukuran panel
       const seg = this.hasEmb ? Math.max(40, Math.min(240, Math.round(len * 2.2))) : 1;
       const segY = this.hasEmb ? Math.max(40, Math.min(240, Math.round(out * 2.2))) : 1;
       geo = new T.BoxGeometry(len, out, t, seg, segY, 1);
@@ -149,7 +149,7 @@ export class Folder {
     const mesh = this.panelMesh(spec.shape || 'rect', f.len, spec.out, rz, flipOf(rz, spec.attach), spec.uv);
     mesh.userData.panel = { panelId: spec.panelId, role: spec.role, surface: spec.surface, up: spec.up, heroRegion: spec.heroRegion };
     this._shapeN = null;
-    // 纸层堆叠：副翼类面板沿法向内缩，消除合盖后的共面 z-fighting
+    // Penumpukan lapisan kertas: panel sayap menyusut ke dalam sepanjang normal untuk menghilangkan z-fighting koplanar setelah ditutup
     const zoff = { glue: -1.05, dust: -0.62, ear: -0.62, tuck: -0.55 }[spec.shape] || 0;
     if (zoff) mesh.position.z = zoff * this._t;
     fg.add(mesh);
@@ -166,7 +166,7 @@ export class Folder {
     const root = new T.Group();
     for (const pc of pieces) {
       const pg = new T.Group();
-      pg.rotation.x = -Math.PI / 2;           // 展开图 XY → 地面，+z → 世界上方
+      pg.rotation.x = -Math.PI / 2;           // Bentangan XY → lantai, +z → atas dunia
       pg.position.set(0, 0.5, 0);
       pc.pg = pg;
       const pv = new T.Group();
@@ -186,8 +186,8 @@ export class Folder {
     const kF = hasAsm ? clamp(k / 0.68, 0, 1) : k;
     const kA = hasAsm ? clamp((k - 0.7) / 0.3, 0, 1) : 0;
     const ke = ss(kF);
-    // 翻件（flip）：一律向纸色面折叠（sign=-1）的盒型折完后盒体挂在幅面下方，
-    // 绕世界 x 轴整体翻 180° 立正——与 rte 的 stand 同生态位；窗口避开折叠与装配末段
+    // Pembalikan (flip): pola kotak yang selalu melipat ke sisi warna kertas (sign=-1) akan menggantung di bawah bidang setelah terlipat,
+    // diputar 180° mengelilingi sumbu x dunia hingga tegak - setara dengan stand pada rte; jeda menghindari akhir pelipatan dan perakitan
     const flipWin = hasAsm ? [0.7, 0.85] : [0.85, 1];
     const kFlip = ss(clamp((k - flipWin[0]) / (flipWin[1] - flipWin[0]), 0, 1));
     const D = this.maxDepth || 1;
@@ -197,14 +197,14 @@ export class Folder {
       n.fg.rotation.x = n.sign * e * n.angle;
     }
     for (const pc of (pieces || [])) {
-      // 升力：折叠期把幅面抬离地面（盒体下垂不穿地），翻件/装配阶段收回
+      // Gaya angkat: mengangkat bidang dari lantai selama periode pelipatan (kotak yang menggantung tidak menembus lantai), ditarik kembali pada tahap pembalikan/perakitan
       const liftK = pc.flip ? ke * (1 - kFlip) : pc.asm && pc.sign < 0 ? ke * (1 - kA) : ke;
       pc.pg.position.y = 0.5 + (pc.sign < 0 ? liftK * (pc.lift || 0) : 0);
-      // 翻件（flip）：绕世界 x 轴把下垂盒体转正——= pg.rotation.x 从 -π/2 连续转到 +π/2，
-      // 等效印刷面朝下折起（real 折叠物理：对侧墙板朝向相反），不做 y 轴翻件（会把墙板文字转反）
+      // Pembalikan (flip): memutar tegak kotak yang menggantung di sekitar sumbu x dunia - pg.rotation.x berputar mulus dari -π/2 ke +π/2,
+      // setara dengan melipat sisi cetak ke bawah (fisika pelipatan nyata: panel dinding yang berlawanan berorientasi terbalik), tanpa pembalikan sumbu y (agar teks panel dinding tidak terbalik)
       pc.pg.rotation.x = -Math.PI / 2 + (pc.flip ? Math.PI * kFlip : 0);
       const pv = pc.pivot; if (!pv) continue;
-      // 翻件绕 x 轴后世界 z 足迹平移 ly，补回原位
+      // Setelah pembalikan di sumbu x, jejak z dunia bergeser ly, dikembalikan ke posisi semula
       pv.position.set(pc.off[0], 0, pc.off[1] - (pc.flip ? pc.tree.ly * kFlip : 0)); pv.rotation.set(0, 0, 0);
       if (pc.stand) {
         const kS2 = ss(clamp((k - 0.85) / 0.15, 0, 1));
@@ -212,20 +212,20 @@ export class Folder {
       }
       if (!pc.asm || kA <= 0) continue;
       const { L, W, H, t } = this._dims;
-      // 双件套合：盖/套筒与盒体共面处留 0.35mm 装配间隙
+      // Pasangan dua bagian: beri celah perakitan 0.35mm di mana tutup/sarung koplanar dengan badan kotak
       if (pc.asm.type === 'lid') {
         const hh = pc.asm.hh, L2 = pc.asm.lx, W2 = pc.asm.ly;
         const kH = ss(kA / 0.6), kV = ss((kA - 0.6) / 0.4);
         const tx = -(L2 - L) / 2;
         const hover = H + hh + 16;
-        // sign=-1 折叠后盖口已朝下，直接平移到盒体上方落下（无翻面：z 足迹不再镜像，
-        // 盖 z 区间 [z−W2, z]，居中对准盒体 [−W,0] 需 z=(W2−W)/2）
+        // sign=-1 setelah pelipatan bukaan tutup sudah menghadap ke bawah, langsung digeser ke atas badan kotak lalu turun (tanpa pembalikan: jejak z tidak lagi dicerminkan,
+        // rentang z tutup [z−W2, z], perataan tengah ke badan kotak [−W,0] memerlukan z=(W2−W)/2)
         pv.position.x = pc.off[0] + (tx - pc.off[0]) * kH;
         pv.position.z = ((W2 - W) / 2) * kH;
         pv.position.y = hover * kH - (hover - (H + t - 0.05)) * kV;
       } else if (pc.asm.type === 'drawer') {
         const kS = ss(kA);
-        const target = pc.asm.d - L * 0.15;               // 末态留 15% 抽出
+        const target = pc.asm.d - L * 0.15;               // Kondisi akhir menyisakan 15% terbuka
         pv.position.x = pc.off[0] + (target - pc.off[0]) * kS;
         pv.position.y = (t + 0.55) * kS;
         pv.position.z = -(t + 0.35) * kS;
@@ -234,7 +234,7 @@ export class Folder {
   }
 }
 
-// —— 盒型折叠树（与 2D gen* 共用尺寸公式；uv = 2D 刀版坐标矩形，attach = 2D 中挂于母板哪侧） ——
+// -- Pohon lipat pola kotak (berbagi rumus dimensi dengan gen* 2D; uv = persegi panjang koordinat garis potong 2D, attach = sisi panel induk di 2D) --
 export function makePieces(tpl, L, W, H, t, glue) {
   const dh = Math.min(W * 0.75, 32), tk = Math.min(16, W * 0.55);
   if (tpl === 'rte' || tpl === 'ste') {
@@ -328,7 +328,7 @@ export function makePieces(tpl, L, W, H, t, glue) {
       { tree: { ...tray(L2, W2, hh2, ox2), panelId: 'lid-top', role: 'hero', surface: 'outside', up: 'top' }, sign: -1, lift: hh2, off: [D, 0], asm: { type: 'lid', hh: hh2, lx: L2, ly: W2 } }
     ];
   }
-  // 卷筒盒（圆柱 24 棱 / 六边形 6 棱）：p0 根段 → xmax 出 p1 → far 逐段卷合；正 N 边形顶/底盖
+  // Kotak tabung (silinder 24 sisi / heksagonal 6 sisi): segmen dasar p0 → xmax ke p1 → far tergulung segmen demi segmen; tutup atas/bawah poligon beraturan N sisi
   if (tpl === 'cyl' || tpl === 'hex') {
     const N = tpl === 'cyl' ? 24 : 6;
     const wSeg = tpl === 'cyl' ? Math.PI * L / 24 : W;
@@ -345,8 +345,8 @@ export function makePieces(tpl, L, W, H, t, glue) {
     ].filter(Boolean);
     return [{ tree: { lx: wSeg, ly: bh, uv: [0, 0, wSeg, bh], panelId: 'tube-body', role: 'hero', surface: 'outside', up: 'top', heroRegion: N === 24 ? [9 / 24, 0, 6 / 24, 1] : [3 / 6, 0, 1 / 6, 1], kids }, sign: -1, lift: Rp, off: [0, 0], stand: true }];
   }
-  if (tpl !== 'drawer') throw new Error(`未知盒型：${tpl}；请先补齐结构与 3D 同步契约`);
-  // drawer：内盒托盘 + 套筒（root uvRot=90：3D lx 沿 2D band 纵向）
+  if (tpl !== 'drawer') throw new Error(`Model kotak tidak dikenal: ${tpl}; harap lengkapi kontrak sinkronisasi struktur dan 3D terlebih dahulu`);
+  // drawer: baki kotak dalam + sarung (root uvRot=90: lx 3D membujur sepanjang pita 2D)
   const D2 = L + 2 * H + 45;
   const oxS = 2 * H + L + 28;
   const sxs1 = oxS + H + 2 * t, sxs2 = sxs1 + W + 3 * t, sxs3 = sxs2 + H + 3 * t;

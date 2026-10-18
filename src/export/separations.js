@@ -1,4 +1,4 @@
-// 工艺分版导出（P0 基线）：每个工艺一个单色 1:1 PDF（黑=该工艺覆盖区），供制版直接使用
+// Ekspor separasi warna finishing (baseline P0): satu PDF monokrom 1:1 per finishing (hitam = area cakupan finishing), untuk penggunaan langsung pembuatan pelat cetak
 import { geomOf } from '../dieline/geom.js';
 import { drawLayer } from '../design/layers.js';
 import { composeEmbossChannels } from '../design/emboss.js';
@@ -8,18 +8,18 @@ import { writePdf, pageBoxes, zlib, pdfTextStream } from './pdf.js';
 export async function exportSeparations(s, mat) {
   await document.fonts.ready;
   const missing = s.layers.filter(l => l.visible && l.finish && l.finish !== 'none' && l.kind === 'image' && !l.img);
-  if (missing.length) throw new Error('工艺分版未导出：存在 ' + missing.length + ' 个尚未加载的工艺图片图层。');
+  if (missing.length) throw new Error('Separasi warna finishing belum diekspor: terdapat ' + missing.length + ' layer gambar finishing yang belum dimuat.');
   const g = geomOf(s, mat.t);
   const { b, ox, oy, Wmm, Hmm, k, Wpt, Hpt, trim, trimRect } = pageBoxes(s, g);
   const S = 300 / 25.4;
   const emboss = composeEmbossChannels({ layers: s.layers.filter(l => l.visible && l.finish === 'emboss'), panels: g.panels, W: Math.round(Wmm * S), H: Math.round(Hmm * S), S, ox, oy, fallbackDir: s.embDir });
   const PROCS = [
-    { key: 'foil', match: l => l.finish === 'foil' || l.finish === 'silver', label: 'HOT-FOIL', cn: '烫金版' },
-    { key: 'uv', match: l => l.finish === 'uv', label: 'SPOT-UV', cn: 'UV版' },
-    { key: 'gloss', match: l => l.finish === 'gloss', label: 'SPOT-GLOSS', cn: '亮面版' },
-    { key: 'holo', match: l => l.finish === 'holo', label: 'HOLO-FOIL', cn: '镭射版' },
-    { key: 'emboss-up', mask: emboss.up, exists: emboss.hasUp, label: 'EMBOSS UP ' + s.embDepth + 'MM', cn: '击凸版' },
-    { key: 'emboss-down', mask: emboss.down, exists: emboss.hasDown, label: 'EMBOSS DOWN ' + s.embDepth + 'MM', cn: '击凹版' }
+    { key: 'foil', match: l => l.finish === 'foil' || l.finish === 'silver', label: 'FOIL PANAS', cn: 'Pelat Foil Emas' },
+    { key: 'uv', match: l => l.finish === 'uv', label: 'SPOT UV', cn: 'Pelat Spot UV' },
+    { key: 'gloss', match: l => l.finish === 'gloss', label: 'GLOSSY KHUSUS', cn: 'Pelat Glossy' },
+    { key: 'holo', match: l => l.finish === 'holo', label: 'FOIL HOLOGRAFIS', cn: 'Pelat Holografis' },
+    { key: 'emboss-up', mask: emboss.up, exists: emboss.hasUp, label: 'EMBOSS TIMBUL ' + s.embDepth + 'MM', cn: 'Pelat Emboss Timbul' },
+    { key: 'emboss-down', mask: emboss.down, exists: emboss.hasDown, label: 'DEBOSS CEKUNG ' + s.embDepth + 'MM', cn: 'Pelat Deboss Cekung' }
   ];
   const base = s.tpl + '_' + s.L + 'x' + s.W + 'x' + s.H;
   let made = 0;
@@ -43,7 +43,7 @@ export async function exportSeparations(s, mat) {
     const content = 'q ' + Wpt.toFixed(2) + ' 0 0 ' + Hpt.toFixed(2) + ' 0 0 cm /Im0 Do Q\n'
       + '0.35 w 0.6 0.6 0.6 RG [1.5 1.5] 0 d\n' + outline + '\n[] 0 d\n'
       + '0.35 w 0.55 0.55 0.55 RG [2 2] 0 d ' + trimRect + ' re S [] 0 d\n'
-      + 'BT /F1 7 Tf 0 0 0 rg 6 ' + (Hpt - 11).toFixed(2) + ' Td (' + proc.label + ' PLATE  ' + base + '  1:1  BLACK = PROCESS AREA) Tj ET';
+      + 'BT /F1 7 Tf 0 0 0 rg 6 ' + (Hpt - 11).toFixed(2) + ' Td (PELAT ' + proc.label + '  ' + base + '  1:1  HITAM = AREA PROSES) Tj ET';
     writePdf([
       '<< /Type /Catalog /Pages 2 0 R >>',
       '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
@@ -53,5 +53,5 @@ export async function exportSeparations(s, mat) {
       pdfTextStream(content)
     ], base + '_' + proc.key + '_plate.pdf');
   }
-  if (!made) alert('没有可分版的工艺图层：请先在「设计」页为图层指定烫金/UV/亮面/压纹/镭射工艺。');
+  if (!made) alert('Tidak ada layer finishing yang dapat dipisahkan: silakan tentukan finishing foil/spot UV/glossy/emboss-deboss/holografis untuk layer pada tab "Desain" terlebih dahulu.');
 }

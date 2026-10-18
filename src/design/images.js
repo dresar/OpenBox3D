@@ -1,4 +1,4 @@
-// 图片上传：FileReader → dataURL；记录自然尺寸供 DPI 计算；支持替换与新增
+// Unggah gambar: FileReader → dataURL; catat ukuran alami untuk perhitungan DPI; dukung penggantian dan penambahan baru
 import { store } from '../state/store.js';
 import { containInHero } from '../dieline/hero.js';
 import { bboxOfPts } from './containers.js';

@@ -1,4 +1,4 @@
-// UI 基础件：开关、区块、按钮、输入样式（按原型设计语汇）
+// Komponen dasar UI: sakelar, blok, tombol, gaya input (sesuai kosakata desain purwarupa)
 import React, { useState } from 'react';
 
 export const C = { ink: '#211d18', brand: '#9a5b1f', gold: '#C9A227', paper: '#f5f1e8', panel: '#faf7f0', bd: '#d8d0c2', bd2: '#e7e0d4', mut: '#8a8071', dim: '#5c554a' };
@@ -58,7 +58,7 @@ export function KV({ k, v, mono = true }) {
   );
 }
 
-// 苏哇猫 logo（金色 + 尾摆动效；bg 为挖眼底色，默认顶栏墨色）
+// Logo kucing Suwa (emas + animasi goyang ekor; bg warna dasar mata terpotong, bawaan bilah atas warna tinta)
 export function LogoCat({ size = 22, color = '#C9A227', bg = '#211d18' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" style={{ display: 'block' }}>
@@ -77,10 +77,10 @@ export function LogoCat({ size = 22, color = '#C9A227', bg = '#211d18' }) {
   );
 }
 
-// 数值滑杆行：滑杆 + 可直接输入的数值框（Enter/失焦提交，Esc 还原）
+// Baris slider nilai: slider + kotak nilai input langsung (Enter/kehilangan fokus untuk kirim, Esc untuk pulihkan)
 export const monoSt = { fontFamily: "'JetBrains Mono',monospace", fontSize: 10.5, color: '#9a5b1f' };
 
-// 颜色行：标签 + 取色器
+// Baris warna: label + pemilih warna
 export function ColorRow({ label, value, onChange }) {
   return <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: 10.5, color: '#8a8071' }}>
     <span>{label}</span><input aria-label={label} type="color" value={value} onChange={e => onChange(e.target.value)} />
@@ -91,12 +91,12 @@ const clampStep = (v, min, max, step) => Math.min(max, Math.max(min, +(Math.roun
 
 export function Range({ label, value, min, max, step = 0.01, suffix = '', onChange }) {
   const dec = step < 0.1 ? 2 : (step % 1 ? 1 : 0);
-  const [draft, setDraft] = useState(null); // 编辑中草稿；null=跟随滑杆值
+  const [draft, setDraft] = useState(null); // Draf yang sedang diedit; null=mengikuti nilai slider
   const commit = () => {
     if (draft === null) return;
     const n = parseFloat(draft);
     setDraft(null);
-    if (!Number.isFinite(n)) return; // 非法输入直接丢弃，不回写
+    if (!Number.isFinite(n)) return; // Masukan tidak valid langsung diabaikan, jangan tulis ulang
     const v = clampStep(n, min, max, step);
     if (v !== value) onChange(v);
   };
@@ -104,7 +104,7 @@ export function Range({ label, value, min, max, step = 0.01, suffix = '', onChan
     <div style={{ fontSize: 10.5, color: '#8a8071', marginBottom: 3 }}>{label}</div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
       <input aria-label={label} type="range" value={value} min={min} max={max} step={step} onInput={e => onChange(+e.currentTarget.value)} style={{ flex: 1, minWidth: 0, accentColor: '#9a5b1f', margin: 0 }} />
-      <input aria-label={label + ' 数值'} inputMode="decimal" value={draft !== null ? draft : Number(value).toFixed(dec)}
+      <input aria-label={label + ' Nilai'} inputMode="decimal" value={draft !== null ? draft : Number(value).toFixed(dec)}
         onChange={e => setDraft(e.target.value)} onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') { commit(); e.currentTarget.blur(); } else if (e.key === 'Escape') { setDraft(null); e.currentTarget.blur(); } }}
         style={{ ...monoSt, width: 46, flex: 'none', padding: '2px 4px', textAlign: 'right', border: '1px solid #d8d0c2', borderRadius: 4, background: '#fff' }} />
@@ -113,7 +113,7 @@ export function Range({ label, value, min, max, step = 0.01, suffix = '', onChan
   </div>;
 }
 
-// 从主预览 renderer 抓 JPEG 缩略图（preserveDrawingBuffer 已开；先离屏缩小，控制工程文件体积）
+// Ambil gambar mini JPEG dari perender pratinjau utama (preserveDrawingBuffer aktif; perkecil di luar layar terlebih dahulu untuk mengontrol ukuran berkas proyek)
 export function captureThumb(engineRef, width = 160) {
   const eng = engineRef && engineRef.current;
   if (!eng || !eng.renderer || !eng.renderer.domElement) return '';

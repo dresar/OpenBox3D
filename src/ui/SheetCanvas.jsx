@@ -1,4 +1,4 @@
-// 2D 画布：结构/设计视图共用 —— SVG 主画布（mm 世界坐标）+ 缩放平移 + 全部拖拽交互
+// Kanvas 2D: Digunakan bersama oleh tampilan struktur/desain —— Kanvas utama SVG (koordinat dunia mm) + zoom dan pan + semua interaksi seret
 import React, { useRef, useEffect, useState } from 'react';
 import { store, useStore } from '../state/store.js';
 import { asset } from '../asset.js';
@@ -28,10 +28,10 @@ export function SheetCanvas({ view, g, children, onImageDrop }) {
     const k2 = Math.min((r.width - 2 * pad) / w, (r.height - 2 * pad) / h);
     store.set({ k: k2, tx: (r.width - k2 * w) / 2 - k2 * bb[0], ty: (r.height - k2 * h) / 2 - k2 * bb[1] });
   };
-  // 挂载 / 几何变化时适配（用户未手动平移过）；fitNonce 强制适配
+  // Pasang / sesuaikan saat geometri berubah (pengguna belum melakukan pan manual); fitNonce paksa penyesuaian
   useEffect(() => { const raf = requestAnimationFrame(() => { if (!userMoved.current) fit(); }); return () => cancelAnimationFrame(raf); }, [g]);
   useEffect(() => { if (s.fitNonce > 0) { userMoved.current = false; const raf = requestAnimationFrame(fit); return () => cancelAnimationFrame(raf); } }, [s.fitNonce]);
-  // 滚轮缩放（非 passive）
+  // Zoom roda gulir (non-pasif)
   useEffect(() => {
     const el = elRef.current; if (!el) return;
     const onWheel = e => {
@@ -50,13 +50,13 @@ export function SheetCanvas({ view, g, children, onImageDrop }) {
     ro.observe(el); return () => ro.disconnect();
   }, [g]);
 
-  // —— 图层按下（设计视图）：选中 + 开始移动（带吸附） ——
+  // —— Layer ditekan (tampilan desain): pilih + mulai geser (dengan snap) ——
   const onLayerDown = (e, l, b) => {
     if (e.button !== 0) return;
     e.stopPropagation();
     if (s.sel !== l.id) store.set({ sel: l.id });
     if (l.locked) return;
-    try { elRef.current.setPointerCapture(e.pointerId); } catch (_) { /* 浏览器不支持时沿用窗口内拖拽 */ }
+    try { elRef.current.setPointerCapture(e.pointerId); } catch (_) { /* Gunakan seret dalam jendela jika peramban tidak mendukung */ }
     const vT = [], hT = [];
     (g.panels || []).forEach(panel => {
       const pb = bboxOfPts(panel.pts), x0 = pb[0], y0 = pb[1], x1 = pb[2], y1 = pb[3];
@@ -79,7 +79,7 @@ export function SheetCanvas({ view, g, children, onImageDrop }) {
       const rr = (d.l0.rot || 0) * Math.PI / 180, co = Math.cos(rr), si = Math.sin(rr);
       const dxL = dx * co + dy * si, dyL = -dx * si + dy * co;
       if (d.cropMode) {
-        // 裁剪：源图像素尺度不变，拖边调整显示区域与 crop 矩形
+        // Pangkas: skala piksel gambar sumber tidak berubah, seret tepi untuk menyesuaikan area tampilan dan persegi panjang crop
         store.set(st => ({
           layers: st.layers.map(l => {
             if (l.id !== d.id) return l;
@@ -169,7 +169,7 @@ export function SheetCanvas({ view, g, children, onImageDrop }) {
       const hit = containerAt(g, mmPt(e));
       if (hit) store.set(st => ({ layers: st.layers.map(l => l.id === d.id && l.panelId !== hit.panelId ? { ...l, panelId: hit.panelId } : l) }));
     }
-    if (e) try { elRef.current.releasePointerCapture(e.pointerId); } catch (_) { /* 已释放或未捕获 */ }
+    if (e) try { elRef.current.releasePointerCapture(e.pointerId); } catch (_) { /* Sudah dilepas atau tidak ditangkap */ }
     drag.current = null; setSnapG(null);
   };
   const onDragOver = e => {
@@ -194,7 +194,7 @@ export function SheetCanvas({ view, g, children, onImageDrop }) {
   const sel = s.layers.find(l => l.id === s.sel);
   const selB = sel && sel.visible !== false && view === 'design' ? bboxOf(sel) : null;
 
-  // —— 结构视图：线段类型选择 ——
+  // —— Tampilan struktur: pemilihan tipe segmen garis ——
   const renderLineEditor = () => {
     const els = [];
     g.segs.forEach((sg, si) => {
@@ -205,7 +205,7 @@ export function SheetCanvas({ view, g, children, onImageDrop }) {
     return <g>{els}</g>;
   };
 
-  // —— 设计视图：图层 ——
+  // —— Tampilan desain: layer ——
   const renderLayer = l => {
     const b = bboxOf(l);
     let fill = l.color || '#211d18', stroke = 'none';
@@ -260,7 +260,7 @@ export function SheetCanvas({ view, g, children, onImageDrop }) {
     return <g key={l.id} clipPath={clipId ? 'url(#' + clipId + ')' : undefined}>{els}</g>;
   };
 
-  // —— 设计视图：选中框（8 手柄 + 旋转） ——
+  // —— Tampilan desain: kotak pilihan (8 handel + putar) ——
   const renderSelOverlay = () => {
     if (!selB || sel.locked) {
       return selB ? <rect x={selB[0]} y={selB[1]} width={selB[2]} height={selB[3]} fill="none" stroke="#9a5b1f" strokeWidth={1.4} strokeDasharray="2 2" style={{ vectorEffect: 'non-scaling-stroke', pointerEvents: 'none' }} /> : null;
@@ -288,7 +288,7 @@ export function SheetCanvas({ view, g, children, onImageDrop }) {
 
   const zoomPct = Math.round(k * 100) + '%';
   return (
-    <div ref={elRef} aria-label={view === 'design' ? '设计画布，可拖拽图片到盒面' : undefined} data-testid={view === 'design' ? 'design-drop-canvas' : undefined}
+    <div ref={elRef} aria-label={view === 'design' ? 'Kanvas desain, dapat menyeret gambar ke permukaan kotak' : undefined} data-testid={view === 'design' ? 'design-drop-canvas' : undefined}
       style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#e7e0d0', userSelect: 'none', touchAction: 'none' }}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}
       onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
@@ -344,25 +344,25 @@ export function SheetCanvas({ view, g, children, onImageDrop }) {
           </>)}
         </g>
       </svg>
-      {dropPanel && <div data-testid="image-drop-hint" style={{ position: 'absolute', left: '50%', top: 18, transform: 'translateX(-50%)', padding: '7px 12px', borderRadius: 6, background: '#211d18', color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: '0 6px 18px rgba(33,29,24,0.22)', pointerEvents: 'none' }}>释放图片到当前盒面</div>}
+      {dropPanel && <div data-testid="image-drop-hint" style={{ position: 'absolute', left: '50%', top: 18, transform: 'translateX(-50%)', padding: '7px 12px', borderRadius: 6, background: '#211d18', color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: '0 6px 18px rgba(33,29,24,0.22)', pointerEvents: 'none' }}>Lepaskan gambar ke panel kotak saat ini</div>}
       <div style={{ position: 'absolute', left: 12, bottom: 12, display: 'flex', gap: 10, background: 'rgba(250,247,240,0.92)', border: '1px solid #ded5c4', borderRadius: 6, padding: '6px 12px', fontSize: 11, color: '#5c554a', alignItems: 'center' }}>
         {view === 'structure' ? (<>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 14, height: 2, background: '#C8102E', display: 'inline-block' }} />切线</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 14, height: 2, background: '#2E7D46', display: 'inline-block' }} />压痕</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 14, height: 0, borderTop: '2px dashed #c9a227', display: 'inline-block' }} />安全区</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 14, height: 6, background: 'rgba(154,91,31,0.25)', display: 'inline-block' }} />出血带</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 14, height: 2, background: '#C8102E', display: 'inline-block' }} />Garis Potong</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 14, height: 2, background: '#2E7D46', display: 'inline-block' }} />Garis Lipat</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 14, height: 0, borderTop: '2px dashed #c9a227', display: 'inline-block' }} />Area Aman</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 14, height: 6, background: 'rgba(154,91,31,0.25)', display: 'inline-block' }} />Area Bleed</span>
         </>) : (<>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 8, background: 'linear-gradient(135deg,#E9CB6E,#B08A1E)', display: 'inline-block', borderRadius: 2 }} />烫金</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 0, borderTop: '2px dashed #5a9bc4', display: 'inline-block' }} />局部UV</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 8, background: 'linear-gradient(135deg,#f8ffff,#74d8d1,#fff)', border: '1px solid #28a7a1', display: 'inline-block', borderRadius: 2 }} />亮面</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 8, background: 'rgba(33,29,24,0.12)', border: '1px solid rgba(33,29,24,0.35)', display: 'inline-block', borderRadius: 2 }} />压纹</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 8, background: 'linear-gradient(135deg,#E9CB6E,#B08A1E)', display: 'inline-block', borderRadius: 2 }} />Foil Emas</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 0, borderTop: '2px dashed #5a9bc4', display: 'inline-block' }} />Spot UV</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 8, background: 'linear-gradient(135deg,#f8ffff,#74d8d1,#fff)', border: '1px solid #28a7a1', display: 'inline-block', borderRadius: 2 }} />Glossy</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 12, height: 8, background: 'rgba(33,29,24,0.12)', border: '1px solid rgba(33,29,24,0.35)', display: 'inline-block', borderRadius: 2 }} />Emboss</span>
         </>)}
       </div>
       <div style={{ position: 'absolute', right: 12, bottom: 12, display: 'flex', gap: 4, background: 'rgba(250,247,240,0.92)', border: '1px solid #ded5c4', borderRadius: 6, padding: 4 }}>
         <button onClick={() => store.set(st => ({ k: Math.max(0.05, st.k / 1.25) }))} style={{ width: 26, height: 26, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 15, color: '#5c554a', borderRadius: 4 }}>−</button>
         <div style={{ minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#5c554a' }}>{zoomPct}</div>
         <button onClick={() => store.set(st => ({ k: Math.min(40, st.k * 1.25) }))} style={{ width: 26, height: 26, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 15, color: '#5c554a', borderRadius: 4 }}>+</button>
-        <button onClick={() => { userMoved.current = false; fit(); }} title="适配视图" style={{ width: 26, height: 26, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, color: '#5c554a', borderRadius: 4 }}>⤢</button>
+        <button onClick={() => { userMoved.current = false; fit(); }} title="Sesuaikan Tampilan" style={{ width: 26, height: 26, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 12, color: '#5c554a', borderRadius: 4 }}>⤢</button>
       </div>
       {children}
     </div>

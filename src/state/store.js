@@ -1,4 +1,4 @@
-// 全局状态：单一 store（setState 式更新 + 订阅），字段与原型一致
+// Status global: store tunggal (pembaruan gaya setState + langganan), bidang konsisten dengan prototipe
 import { useSyncExternalStore } from 'react';
 import { MATS } from '../dieline/templates.js';
 import { geomOf } from '../dieline/geom.js';
@@ -10,7 +10,7 @@ const qp = new URLSearchParams(location.search);
 const legacy3d = legacyAppearance(qp.get('mat3d') || 'sbs');
 const initialPaper = qp.get('paper') || legacy3d[0], initialFilm = qp.get('film') || legacy3d[1];
 const paper0 = paperPreset(initialPaper), film0 = filmPreset(initialFilm);
-const rig0 = scenePreset(qp.get('studio') || 'lab-default'); // 默认场景即内置 lab-default（原「候选21」红棚参数固化）；旧 id neutral/high-key/dark-craft 仍兼容
+const rig0 = scenePreset(qp.get('studio') || 'lab-default'); // Adegan bawaan adalah lab-default bawaan (parameter studio merah asli 'kandidat 21' dibakukan); id lama neutral/high-key/dark-craft tetap kompatibel
 const initial = {
   view: qp.get('view') || 'structure', tpl: qp.get('tpl') || 'rte', L: 80, W: 40, H: 120, matId: 'sbs350', bleed: 3, glue: 14,
   show: { bleed: true, safe: true, dims: true, labels: true },
@@ -33,7 +33,7 @@ const initial = {
   embDepth: 0.3, embDir: 'up', embBoost: qp.get('embBoost') === '1',
   uiCrop: false,
   sel: null, seq: 1,
-  layers: [] // 默认不带预设图层，设计页从空白开始（?heroTest/?embTest/?surfaceTest 调试场景仍注入测试图层）
+  layers: [] // Secara bawaan tanpa layer preset, halaman desain mulai dari kosong (skenario debug ?heroTest/?embTest/?surfaceTest tetap menyuntikkan layer uji)
 };
 
 if (qp.get('heroTest') === '1') initial.layers = [
@@ -44,35 +44,35 @@ if (qp.get('heroTest') === '1') initial.layers = [
 ];
 if (qp.get('embTest') === '1') {
   initial.layers = [
-    { id: 1, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: '击凸底层', finish: 'emboss', embDir: 'up', visible: true, heroPreset: { x: 0.18, y: 0.25, w: 0.52, h: 0.44 } },
-    { id: 2, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: '击凹顶层', finish: 'emboss', embDir: 'down', visible: true, heroPreset: { x: 0.46, y: 0.43, w: 0.36, h: 0.36 } }
+    { id: 1, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: 'Lapisan Bawah Emboss', finish: 'emboss', embDir: 'up', visible: true, heroPreset: { x: 0.18, y: 0.25, w: 0.52, h: 0.44 } },
+    { id: 2, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: 'Lapisan Atas Deboss', finish: 'emboss', embDir: 'down', visible: true, heroPreset: { x: 0.46, y: 0.43, w: 0.36, h: 0.36 } }
   ];
   initial.fx = { ...initial.fx, emb: true }; initial.sel = 2; initial.seq = 3;
 }
 if (qp.get('surfaceTest') === 'uv') {
   initial.layers = [
-    { id: 1, kind: 'text', x: 0, y: 0, content: 'LOCAL UV', font: 'JetBrains Mono', size: 7, weight: 700, color: '#403b36', finish: 'none', visible: true, heroPreset: { cx: 0.5, cy: 0.25, size: 7, fitChars: 10 } },
-    { id: 2, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: '普通印刷对照', color: '#8c8378', finish: 'none', visible: true, heroPreset: { x: 0.16, y: 0.43, w: 0.28, h: 0.24 } },
-    { id: 3, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: '局部UV', color: '#8c8378', finish: 'uv', visible: true, heroPreset: { x: 0.56, y: 0.43, w: 0.28, h: 0.24 } }
+    { id: 1, kind: 'text', x: 0, y: 0, content: 'Spot UV', font: 'JetBrains Mono', size: 7, weight: 700, color: '#403b36', finish: 'none', visible: true, heroPreset: { cx: 0.5, cy: 0.25, size: 7, fitChars: 10 } },
+    { id: 2, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: 'Perbandingan Cetak Biasa', color: '#8c8378', finish: 'none', visible: true, heroPreset: { x: 0.16, y: 0.43, w: 0.28, h: 0.24 } },
+    { id: 3, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: 'Spot UV', color: '#8c8378', finish: 'uv', visible: true, heroPreset: { x: 0.56, y: 0.43, w: 0.28, h: 0.24 } }
   ];
   initial.fx = { ...initial.fx, foil: false, suv: true }; initial.sel = 3; initial.seq = 4;
 }
-// ?holoTest=1：正面大半版镭射 + 局部镭射块，回归幻彩色谱用
+// ?holoTest=1: Sebagian besar sisi depan foil holografis + blok holografis sebagian, untuk regresi spektrum warna-warni
 if (qp.get('holoTest') === '1') {
   initial.layers = [
-    { id: 1, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: '镭射整版', color: '#c8c2b8', finish: 'holo', visible: true, heroPreset: { x: 0.08, y: 0.08, w: 0.84, h: 0.6 } },
-    { id: 2, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: '镭射局部', color: '#c8c2b8', finish: 'holo', visible: true, heroPreset: { x: 0.3, y: 0.74, w: 0.4, h: 0.18 } }
+    { id: 1, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: 'Holografis Penuh', color: '#c8c2b8', finish: 'holo', visible: true, heroPreset: { x: 0.08, y: 0.08, w: 0.84, h: 0.6 } },
+    { id: 2, kind: 'shape', x: 0, y: 0, w: 1, h: 1, content: 'Holografis Sebagian', color: '#c8c2b8', finish: 'holo', visible: true, heroPreset: { x: 0.3, y: 0.74, w: 0.4, h: 0.18 } }
   ];
   initial.iridescence3d = 0.85; initial.sel = 1; initial.seq = 3;
 }
-// ?key= 兼容：旧链接用扁平 keyAngle 指定主光方位，v2 改写 lightsSpec3d 中 key 灯的 azimuth
+// Kompatibilitas ?key=: tautan lama menggunakan keyAngle datar untuk menentukan arah cahaya utama, v2 menulis ulang azimuth lampu key di lightsSpec3d
 if (qp.has('key')) {
   const kv = +qp.get('key');
   try {
     const ls = JSON.parse(initial.lightsSpec3d);
     const key = ls.find(x => x.id === 'key') || ls.find(x => x.shadow) || ls.find(x => x.type === 'directional');
     if (Number.isFinite(kv) && key) { key.azimuth = kv; initial.lightsSpec3d = JSON.stringify(ls); }
-  } catch (_) { /* lightsSpec3d 损坏则忽略兼容参数 */ }
+  } catch (_) { /* abaikan parameter kompatibilitas jika lightsSpec3d rusak */ }
 }
 initial.layers = placeHeroPresets(initial.layers, heroPanelOf(geomOf(initial, MATS[0].t)));
 
@@ -80,9 +80,9 @@ let state = initial;
 const listeners = new Set();
 const cloneInitial = () => structuredClone(initial);
 
-// 设计图层撤销/重做：仅跟踪 layers/seq 引用快照（图层对象一律不可变更新，快照零拷贝）。
-// 连续编辑（拖拽/滑杆）按「距上次入栈 >400ms 才新入一帧」节流，入栈内容 = 变更前快照；
-// reset（导入工程/重置示例盒）清空历史。
+// Urung/ulang layer desain: hanya melacak snapshot referensi layers/seq (objek layer selalu diperbarui secara immutable, snapshot zero-copy).
+// Pengeditan berkelanjutan (seret/slider) dibatasi dengan pelambatan "hanya masukkan frame baru jika >400ms sejak push terakhir", konten push = snapshot sebelum perubahan;
+// reset (impor proyek/reset kotak contoh) mengosongkan riwayat.
 const HIST_MAX = 60, HIST_GAP = 400;
 let histPast = [], histFuture = [], histLast = 0;
 const frame = () => ({ layers: state.layers, seq: state.seq });
@@ -105,7 +105,7 @@ export const store = {
     if (!histPast.length) return;
     histFuture.push(frame());
     const f = histPast.pop();
-    histLast = 0; // 撤销后的再次编辑强制新入一帧
+    histLast = 0; // Pengeditan ulang setelah urung dipaksa memasukkan frame baru
     state = { ...state, layers: f.layers, seq: f.seq, sel: f.layers.some(l => l.id === state.sel) ? state.sel : null };
     listeners.forEach(l => l());
   },

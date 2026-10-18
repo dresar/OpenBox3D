@@ -1,8 +1,8 @@
-// 数据驱动摄影棚：背景/环境由 setControls 下发；灯具由 lights spec（v2 数组，见 rig.js）经 setLights 按 id reconcile——
-// 新增 id 建灯、消失的 dispose、参数变化就地更新，滑杆拖动不做全量重建；类型或投影角色变化才重建该灯。
-// 投影灯（spec 中 shadow:true 的那盏 directional，全数组唯一）独享黄金角多样本软阴影管线 + 加权 ShadowMaterial 承影网；
-// 其余 directional 单灯无阴影；point 为 PointLight(decay=2)；hemi 忽略方位/距离。
-// 地面布景由 stage.js 独立管理；本模块拥有并释放 background、environment、灯具与阴影承接网。
+// Studio berbasis data: latar belakang/lingkungan dikirim via setControls; lampu dari lights spec (array v2, lihat rig.js) direkonsiliasi berdasarkan id oleh setLights —
+// id baru membuat lampu, yang hilang di-dispose, perubahan parameter diperbarui langsung di tempat, geser slider tidak membangun ulang seluruhnya; hanya perubahan tipe atau peran proyeksi yang membangun ulang lampu tersebut.
+// Lampu proyeksi (directional dengan shadow:true di spec, unik di seluruh array) khusus menggunakan pipeline bayangan lembut multi-sampel golden angle + jaring bayangan ShadowMaterial berbobot;
+// Lampu directional lainnya tanpa bayangan; point adalah PointLight(decay=2); hemi mengabaikan azimuth/jarak.
+// Panggung lantai dikelola secara independen oleh stage.js; modul ini memiliki dan membebaskan background, environment, lampu, dan jaring penerima bayangan.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
@@ -11,13 +11,13 @@ import { canvasGradient, domeEnvironment, normalizeDomeSpec } from './envDome.js
 import { normalizeLights } from './rig.js';
 import { asset } from '../asset.js';
 
-// 点光强度标定：three 物理光度学下 PointLight(decay=2) 照度 E≈I/d²；场景单位为 mm（盒高 ~120，灯距 ~400mm），
-// 平行光强度 1 约等于照度 1，故点光 UI 强度 1 需 I≈400²≈1.6e5 才同量级——取 2e5，观感与 directional 对齐。
+// Kalibrasi intensitas cahaya titik: dalam fotometri fisik three, iluminansi PointLight(decay=2) E≈I/d²; unit adegan adalah mm (tinggi kotak ~120, jarak lampu ~400mm),
+// intensitas cahaya paralel 1 kira-kira sama dengan iluminansi 1, sehingga intensitas UI cahaya titik 1 memerlukan I≈400²≈1.6e5 agar sebanding - diambil 2e5, tampilan visual sejajar dengan directional.
 const POINT_SCALE = 200000;
 const AREA_PROXY_SCALE = 0.65;
 
-// ShadowMaterial 默认把多灯可见度相乘，会把离散面积光样本合成成过黑的阴影并集。
-// 这里只改透明承影网自身的合成：按样本平均可见度；普通 PBR 材质仍走 three.js 逐灯能量累加。
+// ShadowMaterial secara default mengalikan visibilitas multi-lampu, yang menggabungkan sampel area light diskret menjadi gabungan bayangan yang terlalu gelap.
+// Di sini hanya mengubah komposit jaring penerima bayangan transparan itu sendiri: rata-rata visibilitas per sampel; material PBR biasa tetap menggunakan akumulasi energi per lampu three.js.
 const WEIGHTED_DIRECTIONAL_SHADOW_MASK = /* glsl */`
 float getShadowMask() {
   #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
@@ -51,9 +51,9 @@ function samplePattern(count) {
 }
 
 const isColor = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
-// 方位/高度 → 光源位置（与 rig.js 同一约定：x=cosE·cosA，y=sinE，z=cosE·sinA）
+// Azimuth/elevasi → posisi sumber cahaya (konvensi yang sama dengan rig.js: x=cosE·cosA, y=sinE, z=cosE·sinA)
 const spherical = (az, el, dist) => { const a = az * Math.PI / 180, e = el * Math.PI / 180; return [dist * Math.cos(e) * Math.cos(a), dist * Math.sin(e), dist * Math.cos(e) * Math.sin(a)]; };
-// 单背景色推导三档径向渐变幕（dome.bg 缺失时用）
+// Menurunkan tiga tingkat gradien radial dari warna latar belakang tunggal (digunakan saat dome.bg tidak ada)
 const shadeBg = hex => {
   const n = parseInt(hex.slice(1), 16), c = [n >> 16 & 255, n >> 8 & 255, n & 255];
   const s = f => '#' + c.map(v => Math.round(Math.min(255, v * f)).toString(16).padStart(2, '0')).join('');
@@ -72,7 +72,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
   const catcherGeo = new THREE.CircleGeometry(2500, 64), catcherMat = weightedShadowMaterial(0.23);
   const catcher = new THREE.Mesh(catcherGeo, catcherMat); catcher.rotation.x = -Math.PI / 2; catcher.receiveShadow = true; group.add(catcher);
 
-  // 动态灯具表：id → { type, role:'shadow'|'plain', lights:THREE.Light[], areaLight, spec }
+  // Tabel lampu dinamis: id → { type, role:'shadow'|'plain', lights:THREE.Light[], areaLight, spec }
   const entries = new Map();
   let shadowSoftness = 20;
   let shadowExtent = 220;
@@ -92,7 +92,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
     light.shadow.needsUpdate = true;
   };
 
-  // 投影灯多样本摆放：base 球坐标 + 正切平面黄金角偏移（偏移半径 = 软源尺度）
+  // Penempatan multi-sampel lampu proyeksi: koordinat bola dasar + offset golden angle bidang tangen (radius offset = skala sumber lembut)
   const placeShadowEntry = e => {
     const s = e.spec;
     const base = new THREE.Vector3(...spherical(s.azimuth, s.elevation, s.distance));
@@ -118,7 +118,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
         return light;
       });
     } else if (spec.type === 'point') {
-      e.lights = [new THREE.PointLight(0xffffff, 0, 0, 2)]; // decay=2 物理衰减，无阴影
+      e.lights = [new THREE.PointLight(0xffffff, 0, 0, 2)]; // decay=2 atenuasi fisik, tanpa bayangan
     } else if (spec.type === 'hemi') {
       e.lights = [new THREE.HemisphereLight(0xf2f3f2, 0x68645d, 0)];
     } else {
@@ -143,7 +143,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
     e.areaLight.visible = spec.on;
   };
 
-  // 就地更新：颜色/强度/开关/位置，不重建灯对象（shadow entry 只重摆样本）
+  // Pembaruan langsung: warna/intensitas/sakelar/posisi, tidak membangun ulang objek lampu (entri bayangan hanya menata ulang sampel)
   const applyEntry = (e, spec) => {
     e.spec = spec;
     if (e.role === 'shadow') {
@@ -164,7 +164,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
     applyAreaLight(e, spec);
   };
 
-  // spec（数组或 JSON 字符串）→ normalizeLights 统一 v2（v1 形态自动迁移，shadow 强制唯一）→ 按 id reconcile
+  // spec (array atau string JSON) → normalizeLights seragam v2 (bentuk v1 otomatis dimigrasikan, shadow dipaksakan unik) → rekonsiliasi berdasarkan id
   const setLights = spec => {
     let arr = spec;
     if (typeof spec === 'string') { try { arr = JSON.parse(spec); } catch (_) { return; } }
@@ -175,27 +175,27 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
       const role = s.type === 'directional' && s.shadow ? 'shadow' : 'plain';
       const hasArea = s.type !== 'hemi' && s.areaIntensity > 0;
       let e = entries.get(s.id);
-      if (e && (e.type !== s.type || e.role !== role || e.hasArea !== hasArea)) { disposeEntry(e); entries.delete(s.id); e = null; } // 类型、投影角色或伴生柔光面变化时重建
+      if (e && (e.type !== s.type || e.role !== role || e.hasArea !== hasArea)) { disposeEntry(e); entries.delete(s.id); e = null; } // Bangun ulang saat tipe, peran proyeksi, atau permukaan softbox pendamping berubah
       if (!e) { e = makeEntry(s); entries.set(s.id, e); }
       applyEntry(e, s);
     }
     for (const [id, e] of [...entries]) if (!seen.has(id)) { disposeEntry(e); entries.delete(id); }
   };
 
-  // ---- P3 视口 helper：屏幕恒定大小的灯位图标（Sprite + canvas 纹理，sizeAttenuation:false），
-  // 平行光额外一条从灯位指向盒心的细线（不参加拾取）；hemi 无位置不出 helper。
-  // 选中态换金色描边纹理，关灯 opacity 0.35。engine 在 setLights 后调 updateHelpers() 同步。 ----
+  // ---- Helper viewport P3: ikon posisi lampu ukuran konstan layar (Sprite + tekstur canvas, sizeAttenuation:false),
+  // garis tipis tambahan untuk cahaya paralel dari posisi lampu mengarah ke pusat kotak (tidak ikut picking); hemi tidak memiliki posisi sehingga tanpa helper.
+  // Keadaan terpilih berganti ke tekstur garis tepi emas, lampu mati opasitas 0.35. Engine memanggil updateHelpers() setelah setLights untuk sinkronisasi. ----
   const helperGroup = new THREE.Group(); helperGroup.name = 'Box3DLightHelpers'; helperGroup.visible = false; group.add(helperGroup);
   const helperEntries = new Map(); // id → { sprite, mat, tex, line, lineGeo, lineMat, color, selected }
   let helpersVisible = false, helperSelectedId = null;
-  const helperTarget = new THREE.Vector3(0, 42, 0); // 盒心参考点（engine 按盒高经 setHelperTarget 下发）
+  const helperTarget = new THREE.Vector3(0, 42, 0); // Titik referensi pusat kotak (dikirim oleh engine via setHelperTarget sesuai tinggi kotak)
 
   const helperTexture = (type, color, selected) => {
     const cv = document.createElement('canvas'); cv.width = cv.height = 64;
     const cx = cv.getContext('2d');
     cx.beginPath(); cx.arc(32, 32, 21, 0, Math.PI * 2); cx.fillStyle = color; cx.fill();
     cx.lineWidth = 3; cx.strokeStyle = 'rgba(20,16,12,0.55)'; cx.stroke();
-    if (type === 'directional') { // 方向刻度：盘内白色箭头（朝盒心方向示意）
+    if (type === 'directional') { // Skala arah: panah putih di dalam piringan (mengarah ke pusat kotak)
       cx.strokeStyle = 'rgba(255,255,255,0.92)'; cx.lineWidth = 4; cx.lineCap = 'round';
       cx.beginPath(); cx.moveTo(32, 22); cx.lineTo(32, 37); cx.stroke();
       cx.beginPath(); cx.moveTo(26, 32); cx.lineTo(32, 39); cx.lineTo(38, 32); cx.stroke();
@@ -216,7 +216,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
     h.sprite.position.set(p[0], p[1], p[2]);
     h.mat.opacity = spec.on ? 1 : 0.35;
     const sel = helperSelectedId === spec.id;
-    if (h.color !== spec.color || h.selected !== sel) { // 颜色/选中态变化 → 重画纹理
+    if (h.color !== spec.color || h.selected !== sel) { // Perubahan warna/keadaan terpilih → gambar ulang tekstur
       h.color = spec.color; h.selected = sel;
       const old = h.tex; h.tex = helperTexture(e.type, spec.color, sel); h.mat.map = h.tex; h.mat.needsUpdate = true; old.dispose();
     }
@@ -238,13 +238,13 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
       h.lineGeo = new THREE.BufferGeometry();
       h.lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
       h.lineMat = new THREE.LineBasicMaterial({ color: spec.color, transparent: true, opacity: 0.45 });
-      h.line = new THREE.Line(h.lineGeo, h.lineMat); h.line.renderOrder = 29; h.line.raycast = () => {}; // 细线不参加拾取
+      h.line = new THREE.Line(h.lineGeo, h.lineMat); h.line.renderOrder = 29; h.line.raycast = () => {}; // Garis tipis tidak ikut picking
       helperGroup.add(h.line);
     }
     updateHelper(h, e);
     return h;
   };
-  // 与灯具表对齐：新增建 helper、消失或变 hemi 销毁、参数就地同步
+  // Sejajarkan dengan tabel lampu: buat helper baru, hancurkan yang hilang atau berubah menjadi hemi, sinkronkan parameter langsung
   const updateHelpers = () => {
     for (const [id, e] of entries) {
       if (e.type === 'hemi') continue;
@@ -283,7 +283,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
         environmentReady = Promise.resolve(true);
       } catch (error) {
         useFallback();
-        console.warn('RoomEnvironment 加载失败，已回退程序化影棚。', error);
+        console.warn('Gagal memuat RoomEnvironment, beralih ke studio prosedural.', error);
         environmentReady = Promise.resolve(false);
       } finally {
         if (candidate) candidate.dispose();
@@ -314,7 +314,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
       } catch (error) {
         if (alive && token === generation) {
           useFallback();
-          console.warn('HDRI 加载失败，已回退程序化影棚：' + source.id, error);
+          console.warn('Gagal memuat HDRI, beralih ke studio prosedural: ' + source.id, error);
         }
         return false;
       } finally {
@@ -325,7 +325,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
     })();
     return environmentReady;
   };
-  // 穹顶 spec（JSON 字符串）变化时重建程序化环境与背景幕；字符串相等短路，避免无关控制触发 PMREM
+  // Bangun ulang lingkungan prosedural dan latar belakang saat spec kubah (string JSON) berubah; hubungan pendek string sama untuk menghindari PMREM yang tidak perlu
   const rebuildDome = specStr => {
     let parsed = null;
     try { parsed = JSON.parse(specStr); } catch (_) { return; }
@@ -351,7 +351,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
   };
   const api = {
     catcher, shadowSampleCount, setEnvironment, setControls, setLights,
-    // P3 helper 层用：灯具访问（Map 副本，值为该灯主对象）与基位置查询（hemi 无位置返回 null）
+    // Untuk lapisan helper P3: akses lampu (salinan Map, nilai adalah objek utama lampu) dan kueri posisi dasar (hemi tanpa posisi mengembalikan null)
     lightsById() { return new Map([...entries].map(([id, e]) => [id, e.lights[0]])); },
     lightPositionOf(id) {
       const e = entries.get(id);
@@ -359,7 +359,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
       const p = e.role === 'shadow' ? new THREE.Vector3(...spherical(e.spec.azimuth, e.spec.elevation, e.spec.distance)) : e.lights[0].position;
       return [p.x, p.y, p.z];
     },
-    // P3 helper 编辑 API
+    // API pengeditan helper P3
     setHelpersVisible(v) { helpersVisible = !!v; helperGroup.visible = helpersVisible; },
     setHelperSelected(id) { const next = id || null; if (helperSelectedId === next) return; helperSelectedId = next; updateHelpers(); },
     setHelperTarget(x, y, z) { helperTarget.set(x, y, z); updateHelpers(); },
@@ -370,7 +370,7 @@ export function setupStudio(renderer, scene, shadowSampleCount = 5) {
     updateHelpers,
     lightAnglesOf(id) { const e = entries.get(id); return e && e.type !== 'hemi' ? { azimuth: e.spec.azimuth, elevation: e.spec.elevation } : null; },
     helperCenter() { return [helperTarget.x, helperTarget.y, helperTarget.z]; },
-    // 只测 sprite：屏幕恒定大小 → 拾取半径随深度线性放大（0.5·scale·depth，放宽 1.4 倍），取最近一盏
+    // Hanya menguji sprite: ukuran konstan layar → radius picking membesar secara linier seiring kedalaman (0.5·scale·depth, dilonggarkan 1.4 kali), ambil yang terdekat
     pickHelper(raycaster) {
       if (!helpersVisible) return null;
       const c = new THREE.Vector3(); let best = null, bestDist = Infinity;

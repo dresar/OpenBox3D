@@ -1,4 +1,4 @@
-// C 位语义入口：仅从模板已生成的实际面板点集派生，不维护另一份毫米坐标表。
+// Titik masuk semantik posisi utama (hero): hanya diturunkan dari kumpulan titik panel aktual yang dihasilkan templat, tidak mengelola tabel koordinat milimeter terpisah.
 const bboxOfPts = pts => {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of pts) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }

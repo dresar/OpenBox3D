@@ -1,4 +1,4 @@
-// 3D 画布组件：React 壳 + BoxEngine 实例（属性驱动）；engineRef 可取出引擎实例（AR 导出用）
+// Komponen kanvas 3D: Cangkang React + instans BoxEngine (didorong properti); engineRef dapat mengekstrak instans mesin (untuk ekspor AR)
 import React, { useEffect, useRef } from 'react';
 import { BoxEngine } from '../render3d/engine.js';
 

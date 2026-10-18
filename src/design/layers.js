@@ -1,11 +1,11 @@
-// 图层模型：bbox、DPI、跨压痕/越界警示（移植原型逻辑）
-export const FIN = { none: '', foil: '烫金', silver: '烫银', uv: 'UV', gloss: '亮面', emboss: '压纹', holo: '镭射' };
-export const FIN_NAMES = { foil: '烫金', silver: '烫银', uv: '局部 UV', gloss: '亮面', emboss: '压纹', holo: '镭射' };
-export const randomImageName = () => '图片·' + Math.random().toString(36).slice(2, 6).toUpperCase();
+// Model layer: bbox, DPI, peringatan lintas lipatan/melebihi batas (migrasi logika prototipe)
+export const FIN = { none: '', foil: 'Foil Emas', silver: 'Foil Perak', uv: 'Spot UV', gloss: 'Glossy', emboss: 'Emboss', holo: 'Holografis' };
+export const FIN_NAMES = { foil: 'Foil Emas', silver: 'Foil Perak', uv: 'Spot UV', gloss: 'Glossy', emboss: 'Emboss', holo: 'Holografis' };
+export const randomImageName = () => 'Gambar·' + Math.random().toString(36).slice(2, 6).toUpperCase();
 export const layerNameOf = l => {
   if (l && typeof l.name === 'string' && l.name.trim()) return l.name.trim();
-  if (l && l.kind === 'image') return '图片·' + Number(l.id || 0).toString(36).toUpperCase().padStart(4, '0').slice(-4);
-  return l && l.content || '(空)';
+  if (l && l.kind === 'image') return 'Gambar·' + Number(l.id || 0).toString(36).toUpperCase().padStart(4, '0').slice(-4);
+  return l && l.content || '(Kosong)';
 };
 
 export function bboxOf(l) {
@@ -23,7 +23,7 @@ export function dpiOf(l) {
   return Math.round(l.pxw / (l.w / 25.4));
 }
 
-// 图集 UV 用：每个面板（fill 多边形）的包围盒，供 3D 与导出对齐
+// Untuk atlas UV: kotak pembatas setiap panel (poligon fill), untuk penyelarasan 3D dan ekspor
 export function panelBoxes(g) {
   return g.fills.map(pts => {
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
@@ -34,27 +34,27 @@ export function panelBoxes(g) {
 
 export function warnsOf(l, creaseSegs, sbb) {
   const b = bboxOf(l), out = [];
-  // 已绑定容器的图层会在所有渲染/导出链路统一裁切；越过容器边界不再是生产警示。
+  // Layer yang terikat ke kontainer akan dipotong secara seragam di seluruh alur render/ekspor; melewati batas kontainer bukan lagi peringatan produksi.
   if (l.panelId == null) {
     for (const seg2 of creaseSegs) {
       const p1 = seg2[0], p2 = seg2[1];
       if (Math.abs(p1[0] - p2[0]) < 0.01) {
         const cx = p1[0], y0 = Math.min(p1[1], p2[1]), y1 = Math.max(p1[1], p2[1]);
-        if (cx > b[0] && cx < b[0] + b[2] && y0 < b[1] + b[3] && y1 > b[1]) { out.push('跨压痕线：折角处图案会断裂/变形'); break; }
+        if (cx > b[0] && cx < b[0] + b[2] && y0 < b[1] + b[3] && y1 > b[1]) { out.push('Melintasi garis lipat: pola pada sudut lipatan akan terputus/terdistorsi'); break; }
       } else if (Math.abs(p1[1] - p2[1]) < 0.01) {
         const cy = p1[1], x0 = Math.min(p1[0], p2[0]), x1 = Math.max(p1[0], p2[0]);
-        if (cy > b[1] && cy < b[1] + b[3] && x0 < b[0] + b[2] && x1 > b[0]) { out.push('跨压痕线：折角处图案会断裂/变形'); break; }
+        if (cy > b[1] && cy < b[1] + b[3] && x0 < b[0] + b[2] && x1 > b[0]) { out.push('Melintasi garis lipat: pola pada sudut lipatan akan terputus/terdistorsi'); break; }
       }
     }
-    if (b[0] < sbb[0] - 0.5 || b[1] < sbb[1] - 0.5 || b[0] + b[2] > sbb[2] + 0.5 || b[1] + b[3] > sbb[3] + 0.5) out.push('超出版面：已进入出血/废料区');
+    if (b[0] < sbb[0] - 0.5 || b[1] < sbb[1] - 0.5 || b[0] + b[2] > sbb[2] + 0.5 || b[1] + b[3] > sbb[3] + 0.5) out.push('Melebihi tata letak: sudah masuk area bleed/buangan');
   }
-  if (l.kind === 'image') { const dpi = dpiOf(l); if (dpi < 300) out.push('分辨率不足：' + dpi + ' dpi < 300 dpi'); }
+  if (l.kind === 'image') { const dpi = dpiOf(l); if (dpi < 300) out.push('Resolusi tidak memadai: ' + dpi + ' dpi < 300 dpi'); }
   return out;
 }
 
-// 工艺图片的有效 mask：RGB 置白、alpha = 亮度 × 原 alpha。
-// 标准 PBR 灰度工艺图（黑=无效果、白=满效果、灰=过渡）经此转为镂空权重；
-// 旧版 RGBA 抠图（原色+alpha）也兼容（亮度×alpha≈强度）。按 img 对象缓存。
+// Mask efektif untuk gambar finishing: RGB diatur ke putih, alpha = kecerahan × alpha asli.
+// Gambar finishing grayscale PBR standar (hitam=tanpa efek, putih=efek penuh, abu-abu=transisi) dikonversi menjadi bobot cutout;
+// Kliping RGBA versi lama (warna asli+alpha) juga kompatibel (kecerahan×alpha≈intensitas). Di-cache berdasarkan objek img.
 const craftMaskCache = new WeakMap();
 function craftMaskOf(img) {
   let m = craftMaskCache.get(img);
@@ -75,8 +75,8 @@ function craftMaskOf(img) {
   return m;
 }
 
-// 统一绘制一个图层到 2d canvas（导出 PDF / 3D 烘焙共用）
-// sc = px/mm 缩放；fill 覆盖颜色（工艺 mask 用 '#fff' 等）
+// Gambar layer secara seragam ke kanvas 2D (digunakan bersama untuk ekspor PDF / bake 3D)
+// sc = skala px/mm; fill = warna pengganti (mask finishing menggunakan '#fff', dll.)
 export function drawLayer(ctx, l, sc, fill, clipPts) {
   ctx.save();
   if (clipPts && clipPts.length > 2) {
@@ -104,14 +104,14 @@ export function drawLayer(ctx, l, sc, fill, clipPts) {
     ctx.fillStyle = fill || (l.finish === 'emboss' ? 'rgba(33,29,24,0.12)' : l.finish === 'foil' ? '#C9A227' : l.finish === 'silver' ? '#B8BAC4' : (l.color || '#211d18'));
     ctx.fillRect(l.x * sc, l.y * sc, l.w * sc, l.h * sc);
   } else if (l.img) {
-    // 真实图片（支持裁剪）
+    // Gambar sebenarnya (mendukung pemotongan)
     const cr = l.crop || [0, 0, 1, 1];
     const iw = l.img.naturalWidth, ih = l.img.naturalHeight;
     const sx = cr[0] * iw, sy = cr[1] * ih, sw = cr[2] * iw, sh = cr[3] * ih;
     const dx = l.x * sc, dy = l.y * sc, dw = l.w * sc, dh = l.h * sc;
     if (fill || (l.finish && l.finish !== 'none')) {
-      // 工艺图层（mask 或底色 tint）：先在独立画布上按有效 mask（亮度×alpha）镂空，再正常合成
-      // —— 避免 destination-in 直接作用在主画布上抹掉其他内容
+      // Layer finishing (mask atau tint warna dasar): lubangi di kanvas independen sesuai mask efektif (kecerahan×alpha), lalu gabungkan secara normal
+      // —— Menghindari destination-in langsung bekerja pada kanvas utama dan menghapus konten lain
       const t = document.createElement('canvas');
       t.width = Math.max(1, Math.ceil(dw)); t.height = Math.max(1, Math.ceil(dh));
       const tg = t.getContext('2d');
@@ -125,10 +125,10 @@ export function drawLayer(ctx, l, sc, fill, clipPts) {
       ctx.drawImage(l.img, sx, sy, sw, sh, dx, dy, dw, dh);
     }
   } else if (fill) {
-    // 工艺 mask 模式：图片占位区域实心填充
+    // Mode mask finishing: isi solid area placeholder gambar
     ctx.fillStyle = fill; ctx.fillRect(l.x * sc, l.y * sc, l.w * sc, l.h * sc);
   } else {
-    // 图片占位框
+    // Kotak placeholder gambar
     ctx.strokeStyle = fill || '#b3a88f'; ctx.lineWidth = fill ? 2 : sc * 0.3;
     if (!fill) ctx.setLineDash([sc * 2, sc * 1.4]);
     ctx.strokeRect(l.x * sc, l.y * sc, l.w * sc, l.h * sc); ctx.setLineDash([]);

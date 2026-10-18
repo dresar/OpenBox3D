@@ -1,5 +1,5 @@
-// 3D 引擎（P1 满血版）：整版 UV 图集 + 全套 PBR 贴图 + 单材质装配
-// 烫金(metalnessMap)×压纹(normal+displacement) 在同一 MeshPhysicalMaterial 内叠加
+// Engine 3D (versi penuh P1): Atlas UV satu lembar penuh + set tekstur PBR lengkap + rakitan material tunggal
+// Foil emas (metalnessMap) × emboss (normal+displacement) ditumpuk dalam MeshPhysicalMaterial yang sama
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Folder, makePieces } from './fold.js';
@@ -23,12 +23,12 @@ export class BoxEngine {
     this.faceMat = new THREE.MeshPhysicalMaterial({ color: 0xf4f1e8, roughness: 0.5 });
     this.coreMat = new THREE.MeshStandardMaterial({ color: 0xd8cdb2, roughness: 0.92 });
     this.init().catch(e => {
-      if (this.el) this.el.innerHTML = '<div style="padding:20px;color:#a33;font:12px sans-serif">3D 初始化失败: ' + e.message + '</div>';
+      if (this.el) this.el.innerHTML = '<div style="padding:20px;color:#a33;font:12px sans-serif">Inisialisasi 3D gagal: ' + e.message + '</div>';
       console.error(e);
     });
   }
 
-  // 外部驱动：props 全量下发，内部 diff
+  // Driver eksternal: props dikirim penuh, diff internal
   update(props) {
     const prev = this.props;
     this.props = { ...props };
@@ -75,8 +75,8 @@ export class BoxEngine {
     r.setPixelRatio(Math.min(devicePixelRatio, 2));
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMappingExposure = this.num('exposure', 1.02); this.applyToneMapping();
-    r.shadowMap.enabled = new URLSearchParams(location.search).get('shadow') !== '0'; // ?shadow=0 调试（软渲染无头截图用）
-    r.shadowMap.type = THREE.PCFShadowMap; // 低半径 PCF 只做边缘抗锯齿；距离相关半影由有限角主光样本产生
+    r.shadowMap.enabled = new URLSearchParams(location.search).get('shadow') !== '0'; // ?shadow=0 debug (untuk tangkapan layar headless render perangkat lunak)
+    r.shadowMap.type = THREE.PCFShadowMap; // PCF radius rendah hanya untuk antialiasing tepi; penumbra terkait jarak dihasilkan oleh sampel cahaya utama sudut terbatas
     r.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
     this.el.appendChild(r.domElement);
     this.scene = new THREE.Scene();
@@ -89,9 +89,9 @@ export class BoxEngine {
     this.controls.minDistance = 15; this.controls.maxDistance = 5000;
     this.controls.screenSpacePanning = true;
     this.controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-    this.controls.addEventListener('start', () => { this._pauseSpin = Date.now() + 4000; this._fitGoal = null; }); // 用户接管即中断自动适配过渡
+    this.controls.addEventListener('start', () => { this._pauseSpin = Date.now() + 4000; this._fitGoal = null; }); // Intervensi pengguna menghentikan transisi penyesuaian otomatis
     r.domElement.addEventListener('dblclick', () => this.frame());
-    // 视角按钮
+    // Tombol sudut pandang
     const tb = document.createElement('div');
     tb.style.cssText = 'position:absolute;bottom:10px;right:10px;display:flex;gap:4px;z-index:2';
     const mkBtn = (label, fn) => {
@@ -101,22 +101,22 @@ export class BoxEngine {
       b.onmouseleave = () => b.style.background = 'rgba(250,247,240,.92)';
       b.onclick = fn; tb.appendChild(b);
     };
-    mkBtn('正视', () => this.setView('front')); mkBtn('侧视', () => this.setView('side'));
-    mkBtn('顶视', () => this.setView('top')); mkBtn('等轴', () => this.setView('iso'));
-    mkBtn('适配', () => this.frame());
+    mkBtn('Depan', () => this.setView('front')); mkBtn('Samping', () => this.setView('side'));
+    mkBtn('Atas', () => this.setView('top')); mkBtn('Isometrik', () => this.setView('iso'));
+    mkBtn('Paskan', () => this.frame());
     this.el.appendChild(tb);
-    // C4D 式拖拽模式：旋转 / 平移 / 移动盒子 / 转盒
+    // Mode seret gaya C4D: Rotasi / Geser / Pindah Kotak / Putar Kotak
     const mb = document.createElement('div');
     mb.style.cssText = 'position:absolute;top:10px;left:10px;display:flex;align-items:center;z-index:2;border:1px solid #ded5c4;border-radius:6px;overflow:hidden;background:rgba(250,247,240,.92)';
     this._modeBtns = {};
-    [['rotate', '○ 旋转'], ['pan', '✚ 平移'], ['move', '▣ 移动盒子'], ['turn', '⟳ 转盒']].forEach(pair => {
+    [['rotate', '○ Rotasi'], ['pan', '✚ Geser'], ['move', '▣ Pindah Kotak'], ['turn', '⟳ Putar Kotak']].forEach(pair => {
       const b = document.createElement('button'); b.textContent = pair[1];
       b.style.cssText = 'border:none;font:12px "Noto Sans SC",sans-serif;padding:5px 11px;cursor:pointer;white-space:nowrap;background:transparent;color:#5c554a';
       b.onclick = () => this.setMode(pair[0]);
       this._modeBtns[pair[0]] = b; mb.appendChild(b);
     });
-    // 回正：转盒后一键归零 boxRoot 旋转；自动旋转（spin）时 rotation.y 被持续驱动，回正无意义故禁用
-    const rb = document.createElement('button'); rb.textContent = '回正'; rb.title = '盒子旋转归零（转盒模式后用）';
+    // Tegakkan: reset rotasi boxRoot ke nol setelah putar kotak; saat putar otomatis (spin), rotation.y terus digerakkan sehingga tombol dinonaktifkan
+    const rb = document.createElement('button'); rb.textContent = 'Tegakkan'; rb.title = 'Kembalikan rotasi kotak ke nol (digunakan setelah mode putar kotak)';
     rb.style.cssText = 'border:none;border-left:1px solid #ded5c4;font:12px "Noto Sans SC",sans-serif;padding:5px 10px;cursor:pointer;white-space:nowrap;background:transparent;color:#5c554a';
     rb.onclick = () => { if (this.props.spin === '1' || !this.boxRoot) return; this.boxRoot.rotation.set(0, 0, 0); };
     this._turnResetBtn = rb; mb.appendChild(rb);
@@ -133,23 +133,23 @@ export class BoxEngine {
     };
     r.domElement.addEventListener('pointerdown', e => {
       if (e.button !== 0) return;
-      this._fitGoal = null; // 用户接管（移动盒子/转盒走自定义分支，不进 OrbitControls start）：中断自动适配过渡
+      this._fitGoal = null; // Intervensi pengguna (pindah kotak/putar kotak lewat cabang kustom, tidak masuk OrbitControls start): hentikan transisi penyesuaian otomatis
       if (this._mode === 'move') {
         const p = pick(e); if (!p) return;
         this._mvDrag = { p0: p, box0: this.boxRoot.position.clone(), tg0: this.controls.target.clone() };
-        try { r.domElement.setPointerCapture(e.pointerId); } catch (_) { /* 合成/CDP 事件环境防御 */ }
+        try { r.domElement.setPointerCapture(e.pointerId); } catch (_) { /* Pertahanan lingkungan event sintetis/CDP */ }
         this._pauseSpin = Date.now() + 4000;
       } else if (this._mode === 'turn' && this.boxRoot) {
-        // 转盒：仅绕盒心水平旋转（钉在桌面上，不倾斜），只转 boxRoot 不影响折叠
+        // Putar kotak: hanya rotasi horizontal di sekitar pusat kotak (menempel di meja, tanpa miring), hanya memutar boxRoot tanpa mempengaruhi lipatan
         this._tnDrag = { x0: e.clientX, done: 0 };
-        try { r.domElement.setPointerCapture(e.pointerId); } catch (_) { /* 合成/CDP 事件环境防御 */ }
+        try { r.domElement.setPointerCapture(e.pointerId); } catch (_) { /* Pertahanan lingkungan event sintetis/CDP */ }
         this._pauseSpin = Date.now() + 4000;
       }
     });
     r.domElement.addEventListener('pointermove', e => {
       if (this._tnDrag) {
         const d = this._tnDrag, total = (e.clientX - d.x0) * 0.01;
-        this.turnBox(total - d.done); d.done = total; // 增量式绕盒心转，枢轴不漂
+        this.turnBox(total - d.done); d.done = total; // Rotasi inkremental di sekitar pusat kotak, pivot tidak bergeser
         this._pauseSpin = Date.now() + 4000;
         return;
       }
@@ -165,8 +165,8 @@ export class BoxEngine {
     const endMv = () => { this._mvDrag = null; this._tnDrag = null; };
     r.domElement.addEventListener('pointerup', endMv);
     r.domElement.addEventListener('pointercancel', endMv);
-    // P3 灯光可视化编辑：捕获阶段挂在容器上、先于 OrbitControls——命中 helper 进入拖灯（stopPropagation 拦住相机），
-    // 未命中记录候选点击，pointerup 位移 <4px 视为点击空白 → onLightSelect(null)
+    // Edit visual pencahayaan P3: tahap penangkapan terpasang pada kontainer, mendahului OrbitControls - mengenai helper masuk ke seret lampu (stopPropagation menahan kamera),
+    // jika meleset catat klik kandidat, pergeseran pointerup <4px dianggap klik area kosong → onLightSelect(null)
     const ndcOf = e => {
       const rc = r.domElement.getBoundingClientRect();
       return new THREE.Vector2(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
@@ -182,10 +182,10 @@ export class BoxEngine {
       if (this._disposed || this.props.lightEdit !== '1' || e.button !== 0 || e.target !== r.domElement) return;
       const id = helperAt(e);
       if (!id) { this._ltClick = { x: e.clientX, y: e.clientY }; return; }
-      e.stopPropagation(); e.preventDefault(); // 拖灯期间暂停 OrbitControls（相机不动）
+      e.stopPropagation(); e.preventDefault(); // Jeda OrbitControls selama seret lampu (kamera diam)
       const ang = this.studio.lightAnglesOf(id) || { azimuth: 0, elevation: 45 };
       this._ltDrag = { id, x0: e.clientX, y0: e.clientY, moved: false };
-      try { r.domElement.setPointerCapture(e.pointerId); } catch (_) { /* 合成/CDP 事件环境可能抛错，拖拽改走 window 监听 */ }
+      try { r.domElement.setPointerCapture(e.pointerId); } catch (_) { /* Lingkungan event sintetis/CDP mungkin memunculkan error, seret dialihkan ke listener window */ }
       this._pauseSpin = Date.now() + 4000;
       const move = ev => this.lightDragMove(ev);
       const up = ev => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); this.lightDragEnd(); };
@@ -213,8 +213,8 @@ export class BoxEngine {
     };
     loop();
   }
-  // 拖灯：相机射线 ∩ 以盒心为心、半径=该灯 distance（平行光固定 400）的球面，取离当前灯位最近的交点换算 az/el；
-  // studio 走 setLights 就地参数更新（同 id 同角色不重建灯），再经 onLightEdit 回传候选
+  // Seret lampu: sinar kamera ∩ permukaan bola berpusat di pusat kotak dengan radius = distance lampu (lampu paralel tetap 400), ambil titik potong terdekat dari posisi lampu saat ini untuk konversi az/el;
+  // studio menggunakan setLights untuk pembaruan parameter langsung (id dan peran yang sama tidak membangun ulang lampu), lalu mengembalikan kandidat via onLightEdit
   lightDragMove(e) {
     const d = this._ltDrag;
     if (!d || !this.studio) return;
@@ -250,7 +250,7 @@ export class BoxEngine {
   }
   lightDragEnd() {
     const d = this._ltDrag; this._ltDrag = null;
-    if (d && !d.moved && this.props.onLightSelect) this.props.onLightSelect(d.id); // 位移 <4px 视为点选
+    if (d && !d.moved && this.props.onLightSelect) this.props.onLightSelect(d.id); // Pergeseran <4px dianggap sebagai klik pilih
   }
   resize() {
     const w = this.el.clientWidth || 10, h = this.el.clientHeight || 10;
@@ -271,7 +271,7 @@ export class BoxEngine {
     this.camera.updateProjectionMatrix();
   }
 
-  // 透视 ↔ 正交：以当前目标距离对应的可见垂直高度换算，避免切换时构图尺度跳变。
+  // Perspektif ↔ Ortografis: konversi berdasarkan tinggi vertikal terlihat yang sesuai dengan jarak target saat ini, menghindari lompatan skala komposisi saat beralih.
   switchCamera(type) {
     const next = cameraTypeOf(type);
     if (!this.camera || (next === 'orthographic') === !!this.camera.isOrthographicCamera) return;
@@ -303,14 +303,14 @@ export class BoxEngine {
     this.controls.update();
   }
 
-  // 绕盒心水平转盒（钉桌面）：枢轴=盒心，位置随动补偿使盒心原地不漂；d 为增量弧度
+  // Putar kotak horizontal di sekitar pusat kotak (menempel di meja): pivot = pusat kotak, kompensasi posisi mengikuti agar pusat kotak tidak bergeser; d adalah radian inkremental
   turnBox(d) {
     if (!this.boxRoot || !d) return;
     this.boxRoot.updateWorldMatrix(true, false);
     const c = this._centerL ? this.boxRoot.localToWorld(this._centerL.clone()) : new this.T.Vector3();
     const p = this.boxRoot.position, dx = p.x - c.x, dz = p.z - c.z;
     const cos = Math.cos(d), sin = Math.sin(d);
-    p.x = c.x + dx * cos + dz * sin; p.z = c.z - dx * sin + dz * cos; // 绕 Y 轴旋转矩阵 [cos,sin;-sin,cos]
+    p.x = c.x + dx * cos + dz * sin; p.z = c.z - dx * sin + dz * cos; // Matriks rotasi sumbu Y [cos,sin;-sin,cos]
     this.boxRoot.rotation.y += d;
   }
 
@@ -321,7 +321,7 @@ export class BoxEngine {
       this.boxRoot.traverse(o => { if (o.geometry) o.geometry.dispose(); });
     }
     const L = this.num('l', 80), W = this.num('w', 40), H = this.num('h', 120);
-    const t = Math.max(0.2, this.num('t', 0.45)); // 下限 0.2：art200(t=0.22) 薄纸在 3D 里保持真实厚度
+    const t = Math.max(0.2, this.num('t', 0.45)); // Batas bawah 0.2: kertas tipis art200 (t=0.22) mempertahankan ketebalan realistis dalam 3D
     this._dims = { L, W, H, t };
     const sbb = (this.baked && this.baked.atlasSbb) || this.props.sbb || [0, 0, 100, 100];
     this.folder = new Folder(T, sbb, (this.baked || {}).innerUV);
@@ -331,12 +331,12 @@ export class BoxEngine {
     this.boxRoot = this.folder.build(this.pieces, t, this.faceMat, this.coreMat);
     this.scene.add(this.boxRoot);
     if (this.studio) {
-      this.studio.setHelperTarget(0, H * 0.35, 0); // 灯位 helper 的指向/拖拽球心跟随盒高
-      this.studio.setShadowBounds(L, W, H); // 按盒体尺寸收紧阴影相机，保持接触处解析度
+      this.studio.setHelperTarget(0, H * 0.35, 0); // Arah helper lampu / pusat bola seret mengikuti tinggi kotak
+      this.studio.setShadowBounds(L, W, H); // Kencangkan kamera bayangan sesuai dimensi kotak, menjaga resolusi titik kontak
     }
   }
 
-  // 图集烘焙：图层/工艺/基材变化时重烘（防抖由 update 控制）
+  // Bake atlas: bake ulang saat layer/finishing/substrat berubah (debounce dikendalikan oleh update)
   rebake() {
     const p = this.props;
     if (!p.layers || !p.sbb) return;
@@ -357,7 +357,7 @@ export class BoxEngine {
     this._tex = makeAtlasTextures(baked);
     disposeTextures(old);
     applyCoreMaterial(this.coreMat, p.paper || 'coated-white');
-    // 压纹有无变化 → 可能需要重建高细分网格
+    // Perubahan keberadaan emboss → mungkin perlu membangun ulang mesh subdivisi tinggi
     const needEmb = p.embOn === '1' && baked.hasEmb;
     const atlasChanged = !this.folder || baked.atlasSbb.some((v, i) => Math.abs(v - this.folder.sbb[i]) > 1e-7);
     if (atlasChanged || (this.folder && !!this.folder.hasEmb !== !!needEmb)) {
@@ -406,12 +406,12 @@ export class BoxEngine {
     });
   }
 
-  // 影棚不再按 id 重建：灯具由 lightsSpec（JSON 字符串）经 setLights 按 id reconcile，其余参数经 setControls 下发
+  // Studio tidak lagi dibangun ulang berdasarkan id: lampu direkonsiliasi berdasarkan id oleh setLights dari lightsSpec (string JSON), parameter lain dikirim via setControls
   setStudio() {
     if (this.studio) this.studio.dispose();
     const shadowQuery = new URLSearchParams(location.search);
     const requestedSamples = shadowQuery.get('dev3d') === '1' ? +shadowQuery.get('shadowSamples') : this.num('shadowSamples', 5);
-    const shadowSamples = [3, 5, 7].includes(requestedSamples) ? requestedSamples : 5; // ?shadowSamples=3|5|7 仅用于 Dev3D 性能/视觉对照；默认 5：7 个样本灯 +8 贴图 +env 恰好顶满 16 纹理单元，iridescence 无处安放
+    const shadowSamples = [3, 5, 7].includes(requestedSamples) ? requestedSamples : 5; // ?shadowSamples=3|5|7 hanya untuk perbandingan performa/visual Dev3D; default 5: 7 lampu sampel + 8 tekstur + env tepat memenuhi 16 unit tekstur, iridescence tidak memiliki tempat
     this.studio = setupStudio(this.renderer, this.scene, shadowSamples);
     this.studio.setEnvironment(this.props.environment || 'studio_small_08');
     this.studio.setLights(this.props.lightsSpec);
@@ -422,7 +422,7 @@ export class BoxEngine {
     this.applyFlags();
   }
 
-  // 地面场景切换：none 时只有 lighting.js 的透明阴影承接网
+  // Peralihan panggung lantai: saat 'none' hanya ada jaring penerima bayangan transparan lighting.js
   setStage(id) {
     if (this.stageGround) {
       this.scene.remove(this.stageGround);
@@ -445,7 +445,7 @@ export class BoxEngine {
       pair[1].style.fontWeight = on ? '700' : '400';
     });
   }
-  // spin 开启时 boxRoot.rotation.y 被持续驱动，回正按钮禁用
+  // Saat spin aktif, boxRoot.rotation.y terus digerakkan, tombol tegakkan dinonaktifkan
   syncTurnReset() {
     if (!this._turnResetBtn) return;
     const off = this.props.spin === '1';
@@ -466,13 +466,13 @@ export class BoxEngine {
     const bb = new T.Box3().setFromObject(this.boxRoot);
     const c = bb.getCenter(new T.Vector3()), sz = bb.getSize(new T.Vector3());
     this.boxRoot.updateWorldMatrix(true, true);
-    this._centerL = this.boxRoot.worldToLocal(c.clone()); // 盒心（局部坐标）——转盒/spin 的旋转枢轴，折叠或换型后随 frame 刷新
+    this._centerL = this.boxRoot.worldToLocal(c.clone()); // Pusat kotak (koordinat lokal) - pivot rotasi untuk putar kotak/spin, diperbarui dengan frame setelah lipat atau ganti model
     const boxX = this.boxRoot.position.x - c.x, boxZ = this.boxRoot.position.z - c.z;
     const rr = Math.max(sz.x, sz.z, sz.y * 2, 60);
     const tubeHero = this.props.tpl === 'cyl' || this.props.tpl === 'hex';
     const topHero = this.props.tpl === 'mailer' || this.props.tpl === 'lidbase' || this.props.tpl === 'drawer';
     const lowTopHero = topHero && sz.y <= Math.max(sz.x, sz.z) * 0.65;
-    const FIT = 2; // 取景放宽一倍：盒子约占画面半高（占满全屏太大，2026-08 验收反馈）
+    const FIT = 2; // Bingkai diperluas dua kali: kotak memakan sekitar setengah tinggi layar (memenuhi layar terlalu besar, umpan balik penerimaan 2026-08)
     const fitR = rr * (lowTopHero ? 1.85 : 1.1) * FIT;
     this._fitR = fitR; this._fitH = sz.y;
     const camera = lowTopHero

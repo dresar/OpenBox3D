@@ -1,4 +1,4 @@
-// Box3D 工程文件（.boxproj）：盒型/设计/正式材质/正式场景；纯本地文件导入导出，无服务端
+// Berkas proyek Box3D (.boxproj): tipe kotak/desain/material resmi/adegan resmi; impor dan ekspor berkas lokal murni, tanpa server
 import { storeToRig, rigToStorePatch } from '../render3d/rig.js';
 import { normalizeMaterial, materialToStorePatch } from '../render3d/materialPresets.js';
 import { asset } from '../asset.js';
@@ -23,7 +23,7 @@ export function makeProject(state, meta = {}) {
     version: PROJECT_VERSION,
     meta: {
       id: meta.id || newId(),
-      name: String(meta.name || '未命名包装工程').trim().slice(0, 60) || '未命名包装工程',
+      name: String(meta.name || 'Proyek Kemasan Tanpa Nama').trim().slice(0, 60) || 'Proyek Kemasan Tanpa Nama',
       createdAt: meta.createdAt || time,
       updatedAt: time,
       thumbnail: typeof state.projectThumbnail === 'string' && state.projectThumbnail.startsWith('data:image/')
@@ -43,7 +43,7 @@ export function makeProject(state, meta = {}) {
 
 function assertProject(doc) {
   if (!doc || doc.schema !== PROJECT_SCHEMA || doc.version !== PROJECT_VERSION || !doc.meta || !doc.box || !doc.design || !Array.isArray(doc.design.layers)) {
-    throw new Error('不是有效的 Box3D 工程文件。');
+    throw new Error('Bukan berkas proyek Box3D yang valid.');
   }
   return doc;
 }
@@ -53,7 +53,7 @@ const imageOf = src => new Promise(resolve => {
   const img = new Image();
   img.onload = () => resolve(img);
   img.onerror = () => resolve(null);
-  img.src = src[0] === '/' ? asset(src) : src; // 站点绝对路径过 base 前缀（GitHub Pages 子路径）；data:/http(s): 原样
+  img.src = src[0] === '/' ? asset(src) : src; // Jalur absolut situs melalui awalan base (sub-jalur GitHub Pages); data:/http(s): apa adanya
 });
 
 export async function projectStateOf(raw, view = 'design') {

@@ -1,7 +1,7 @@
 {
   "name": "openbox3d",
   "version": "0.1.0",
-  "description": "OpenBox3D 苏哇工作台 — 浏览器内的包装盒设计工作台：参数化刀版、分层设计、PBR 3D 折叠预览与印刷 PDF 导出",
+  "description": "OpenBox3D — Meja kerja desain kemasan berbasis peramban: garis potong parametrik, desain layer, pratinjau lipat 3D PBR, dan ekspor PDF siap cetak",
   "license": "MIT",
   "repository": {
     "type": "git",

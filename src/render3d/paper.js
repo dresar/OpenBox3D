@@ -1,5 +1,5 @@
-// 程序纸纹：可平铺高度场（正弦叠加天然 tileable）+ Sobel 法线转换
-// tileMm = 一个 tile 代表的物理毫米数；画布 128px
+// Tekstur kertas prosedural: medan ketinggian yang dapat diubin (tumpukan sinus yang dapat diubin secara alami) + konversi normal Sobel
+// tileMm = milimeter fisik yang diwakili oleh satu ubin; kanvas 128px
 
 function makeTile(draw) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
@@ -7,7 +7,7 @@ function makeTile(draw) {
   return c;
 }
 
-// 多倍频正弦噪声（可平铺）：h ∈ [-1,1]
+// Derau sinus multi-oktaf (dapat diubin): h ∈ [-1,1]
 function sinNoise(seed, octaves) {
   const comps = [];
   let s = seed;
@@ -23,7 +23,7 @@ function sinNoise(seed, octaves) {
   };
 }
 
-// 纸纹高度 tile（128 灰度）：细腻纸面起伏；kraft 加水平纤维
+// Ubin ketinggian tekstur kertas (128 grayscale): kontur permukaan kertas halus; kraft ditambahkan serat horizontal
 export function paperHeightTile(kind) {
   const n1 = sinNoise(kind === 'kraft' ? 7 : kind === 'open' ? 17 : 3, 5);
   const n2 = sinNoise(11, 3);
@@ -33,7 +33,7 @@ export function paperHeightTile(kind) {
       const u = x / S, v = y / S;
       let h = n1(u, v) * 0.55 + n2(u * 2 % 1, v * 2 % 1) * 0.2;
       if (kind === 'kraft') {
-        // 水平纤维：y 向高频条带 + 沿 x 缓变
+        // Serat horizontal: pita frekuensi tinggi arah y + transisi halus sepanjang x
         h += Math.sin(2 * Math.PI * (v * 46 + n1(u, v) * 1.5)) * 0.28 + Math.sin(2 * Math.PI * (v * 13 + u * 2)) * 0.12;
       }
       const val = Math.max(0, Math.min(255, 128 + h * (kind === 'kraft' ? 42 : kind === 'open' ? 34 : 22)));
@@ -44,7 +44,7 @@ export function paperHeightTile(kind) {
   });
 }
 
-// 高度图 → 切线空间法线图（Sobel）。heightCanvas 灰度；strength 放大梯度
+// Peta ketinggian → peta normal ruang tangen (Sobel). heightCanvas grayscale; strength memperkuat gradien
 export function normalFromHeight(heightCanvas, strength) {
   const W = heightCanvas.width, H = heightCanvas.height;
   const src = heightCanvas.getContext('2d').getImageData(0, 0, W, H).data;
@@ -64,7 +64,7 @@ export function normalFromHeight(heightCanvas, strength) {
   return out;
 }
 
-// kraft 纤维正片叠底色 tile（浅棕纤维纹，用于 albedo 叠加）
+// Ubin warna multiply serat kraft (pola serat cokelat muda, untuk tumpukan albedo)
 export function kraftFiberTile() {
   const n = sinNoise(23, 4);
   return makeTile((g, S) => {

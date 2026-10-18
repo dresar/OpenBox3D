@@ -1,4 +1,4 @@
-// 压纹方向与通道合成：旧图层回退全局方向，重叠处按图层顺序由顶层覆盖。
+// Arah emboss dan komposisi saluran: layer lama kembali ke arah global, tumpang tindih ditimpa oleh layer atas sesuai urutan layer.
 import { drawLayer } from './layers.js';
 import { clipPtsOf } from './containers.js';
 

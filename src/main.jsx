@@ -4,8 +4,8 @@ import { App } from './App.jsx';
 import { store } from './state/store.js';
 import { loadPresetBox } from './preset/presetBox.js';
 
-// 先注入预设示例盒再挂载，避免空白盒闪屏；素材加载失败也保证应用可开。
-// ?heroTest/?embTest/?surfaceTest 调试场景自带测试图层，跳过预设注入。
+// Masukkan kotak contoh preset sebelum memasang, untuk menghindari kedipan kotak kosong; jika pemuatan aset gagal, aplikasi tetap dipastikan dapat dibuka.
+// Adegan debug ?heroTest/?embTest/?surfaceTest memiliki layer pengujian sendiri, lewati injeksi preset.
 const debugScene = ['heroTest', 'embTest', 'surfaceTest'].some(k => new URLSearchParams(location.search).has(k));
 loadPresetBox().catch(() => null).then(preset => {
   if (preset && !debugScene) store.reset(preset);

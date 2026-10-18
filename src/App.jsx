@@ -1,4 +1,4 @@
-// 工作台外壳：顶栏、四工作区与状态栏；启动直接进工作台（无工程首页，工程为纯本地 .boxproj 文件）
+// Kerangka meja kerja: bilah atas, empat area kerja dan bilah status; mulai langsung masuk ke meja kerja (tanpa beranda proyek, proyek berupa berkas lokal .boxproj)
 import React, { useState } from 'react';
 import { store, useStore } from './state/store.js';
 import { geomOf, creaseSegsOf } from './dieline/geom.js';
@@ -16,7 +16,7 @@ import { chooseProjectFile, downloadProject, projectStateOf } from './projects/p
 
 const REPO_URL = 'https://github.com/yuyou-dev/OpenBox3D';
 
-// GitHub 八角猫标（顶栏源码入口）
+// Logo Octocat GitHub (tautan kode sumber bilah atas)
 function GithubMark({ size = 15, color = '#e8dfcc' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block' }}>
@@ -36,7 +36,7 @@ export function App() {
   const creaseSegs = creaseSegsOf(g);
   const warnN = s.layers.reduce((a, l) => a + warnsOf(l, creaseSegs, g.sbb).length, 0);
   const okAll = warnN === 0;
-  const tabs = [['structure', '结构'], ['design', '设计'], ['three', '3D'], ['output', '输出']];
+  const tabs = [['structure', 'Struktur'], ['design', 'Desain'], ['three', '3D'], ['output', 'Keluaran']];
 
   const importProject = async () => {
     try {
@@ -46,11 +46,11 @@ export function App() {
     } catch (e) { window.alert(e.message); }
   };
   const exportProject = () => {
-    const stamp = new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+    const stamp = new Date().toLocaleDateString('id-ID', { month: '2-digit', day: '2-digit' });
     downloadProject(store.get(), { name: tplName + ' ' + s.L + '×' + s.W + '×' + s.H + ' ' + stamp });
   };
   const resetPreset = async () => {
-    if (!window.confirm('重置为示例盒？当前未导出的修改将丢失。')) return;
+    if (!window.confirm('Atur ulang ke kotak contoh? Perubahan yang belum diekspor akan hilang.')) return;
     store.reset(await loadPresetBox());
   };
 
@@ -61,7 +61,7 @@ export function App() {
           {iconOk
             ? <img src={asset('/brand/logo-header-gold.webp')} alt="" onError={() => setIconOk(false)} style={{ width: 26, height: 26, display: 'block' }} />
             : <LogoCat size={24} />}
-          <b style={{ fontSize: 14, letterSpacing: '0.06em' }}>苏哇工作台</b>
+          <b style={{ fontSize: 14, letterSpacing: '0.06em' }}>Meja Kerja Suwa</b>
           <span style={{ fontSize: 10.5, color: '#c8bda9', letterSpacing: '0.04em' }}>OpenBox3D</span>
         </div>
         <div style={{ display: 'flex', gap: 4, marginLeft: 5 }}>
@@ -71,16 +71,16 @@ export function App() {
           ))}
         </div>
         <div style={{ flex: 1 }} />
-        <div title={(okAll ? '结构校验通过' : '设计图层警示 ' + warnN + ' 条') + ' · 切线 ' + g.cutN + ' · 压痕 ' + g.creaseN}
+        <div title={(okAll ? 'Validasi struktur lolos' : 'Peringatan layer desain ' + warnN + ' butir') + ' · Garis potong ' + g.cutN + ' · Garis lipat ' + g.creaseN}
           style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: okAll ? '#8fc79e' : '#f0b070', whiteSpace: 'nowrap', flex: 'none', minWidth: 0, overflow: 'hidden' }}>
           <div style={{ width: 7, height: 7, borderRadius: 99, background: okAll ? '#3f9e5f' : '#e08030', flex: 'none' }} />
-          {okAll ? '校验通过' : '警示 ' + warnN}
+          {okAll ? 'Validasi Lolos' : 'Peringatan ' + warnN}
         </div>
-        <button onClick={importProject} style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #6a6151', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#e8dfcc', whiteSpace: 'nowrap' }}>导入工程</button>
-        <button onClick={exportProject} style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #6a6151', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#e8dfcc', whiteSpace: 'nowrap' }}>导出工程</button>
-        <button onClick={resetPreset} title="恢复为内置示例盒" style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #6a6151', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#e8dfcc', whiteSpace: 'nowrap' }}>重置示例盒</button>
-        <button onClick={async () => { try { await exportPDF(s, m, s.pdfMode); } catch (e) { alert(e.message || String(e)); } }} style={{ padding: '7px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, background: '#9a5b1f', color: '#fff', whiteSpace: 'nowrap', flex: 'none' }}>导出 PDF</button>
-        <a href={REPO_URL} target="_blank" rel="noopener noreferrer" title="GitHub 开源仓库" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderRadius: 6, border: '1px solid #6a6151', fontSize: 12, color: '#e8dfcc', textDecoration: 'none', whiteSpace: 'nowrap', flex: 'none' }}><GithubMark />GitHub</a>
+        <button onClick={importProject} style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #6a6151', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#e8dfcc', whiteSpace: 'nowrap' }}>Impor Proyek</button>
+        <button onClick={exportProject} style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #6a6151', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#e8dfcc', whiteSpace: 'nowrap' }}>Ekspor Proyek</button>
+        <button onClick={resetPreset} title="Pulihkan ke kotak contoh bawaan" style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid #6a6151', cursor: 'pointer', fontSize: 12, background: 'transparent', color: '#e8dfcc', whiteSpace: 'nowrap' }}>Atur Ulang Kotak Contoh</button>
+        <button onClick={async () => { try { await exportPDF(s, m, s.pdfMode); } catch (e) { alert(e.message || String(e)); } }} style={{ padding: '7px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, background: '#9a5b1f', color: '#fff', whiteSpace: 'nowrap', flex: 'none' }}>Ekspor PDF</button>
+        <a href={REPO_URL} target="_blank" rel="noopener noreferrer" title="Repositori Sumber Terbuka GitHub" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderRadius: 6, border: '1px solid #6a6151', fontSize: 12, color: '#e8dfcc', textDecoration: 'none', whiteSpace: 'nowrap', flex: 'none' }}><GithubMark />GitHub</a>
       </div>
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
@@ -92,11 +92,11 @@ export function App() {
 
       <div style={{ height: 26, flex: 'none', display: 'flex', alignItems: 'center', gap: 12, padding: '0 12px', background: '#efe9dc', borderTop: '1px solid #ded5c4', fontSize: 11, color: '#6d6557', fontFamily: "'JetBrains Mono',monospace", whiteSpace: 'nowrap', overflow: 'hidden', lineHeight: '26px' }}>
         <span>{tplName} · {m.name} t={m.t}</span>
-        <span>展开 {fmt(sw)}×{fmt(sh)} mm</span>
-        <span>出血 {s.bleed} mm</span>
+        <span>Bentang {fmt(sw)}×{fmt(sh)} mm</span>
+        <span>Bleed {s.bleed} mm</span>
         <div style={{ flex: 1 }} />
-        <span>缩放 {Math.round((s.k || 1) * 100)}%</span>
-        <span>单位 mm</span>
+        <span>Skala {Math.round((s.k || 1) * 100)}%</span>
+        <span>Satuan mm</span>
       </div>
     </div>
   );

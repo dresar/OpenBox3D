@@ -1,6 +1,6 @@
-// 几何求值：刀版几何是全系统唯一权威数据。
-// 2D 视图、3D 网格、PDF 导出全部由本函数派生；按参数 key 缓存。
-// 手动编辑存为覆盖指令流（ovr 节点位移、typeOvr 线型切换），在模板求值结果上重放。
+// Evaluasi geometri: Geometri garis potong adalah satu-satunya data otoritatif di seluruh sistem.
+// Tampilan 2D, jaring 3D, ekspor PDF semuanya diturunkan dari fungsi ini; di-cache berdasarkan kunci parameter.
+// Pengeditan manual disimpan sebagai aliran instruksi penimpaan (pergeseran simpul ovr, peralihan tipe garis typeOvr), diputar ulang pada hasil evaluasi templat.
 import { genTuck, genMailer, genTray, genSleeve, genTube } from './templates.js';
 
 let _key = null, _val = null;
@@ -14,15 +14,15 @@ export function geomOf(s, t) {
   const cut = pts => { tr(pts, o.sbb); tr(pts, o.vbb); o.segs.push({ t: 'cut', pts }); };
   const crease = pts => { tr(pts, o.sbb); tr(pts, o.vbb); o.segs.push({ t: 'crease', pts }); };
   const fill = pts => { tr(pts, o.sbb); tr(pts, o.vbb); o.fills.push(pts); };
-  // panel 用于“板件填充 + 可设计面”同时生成；region 仅登记可设计面，
-  // 供已经由模板写入 fills 的主体板复用，避免为了补面板语义重复填充。
+  // panel digunakan untuk menghasilkan "pengisian panel + permukaan dapat didesain" secara bersamaan; region hanya mendaftarkan permukaan dapat didesain,
+  // untuk digunakan kembali oleh panel utama yang sudah ditulis ke fills oleh templat, menghindari pengisian berulang untuk melengkapi semantik panel.
   const region = (pts, meta) => { tr(pts, o.sbb); tr(pts, o.vbb); o.panels.push({ role: 'design', surface: 'outside', ...meta, pts }); };
   const panel = (pts, meta) => { fill(pts); region(pts, meta); };
   const safeR = (x, y, w, h, m) => { m = m ?? Math.min(3, w / 4, h / 4); o.safes.push([x + m, y + m, w - 2 * m, h - 2 * m]); };
   const label = (x, y, name, fs) => o.labels.push({ x: r2(x), y: r2(y + 1.4), name, fs: fs || 4 });
   const dimH = (x1, x2, y, txt) => { o.dims.push({ gtf: 'translate(' + r2(x1) + ' ' + r2(y) + ')', len: r2(x2 - x1), mid: r2((x2 - x1) / 2), label: txt }); tr([[x1, y - 5], [x2, y + 3]], o.vbb); };
   const dimV = (y1, y2, x, txt) => { o.dims.push({ gtf: 'translate(' + r2(x) + ' ' + r2(y2) + ') rotate(-90)', len: r2(y2 - y1), mid: r2((y2 - y1) / 2), label: txt }); tr([[x - 5, y1], [x + 3, y2]], o.vbb); };
-  // 二次贝塞尔采样；带 tag 的调用记录为圆弧段（arcRuns 圆弧元数据）
+  // Pengambilan sampel Bezier kuadratik; panggilan dengan tag dicatat sebagai segmen busur (metadata busur arcRuns)
   const q = (p0, pc, p1, tag, n) => {
     n = n || 5; const out = [];
     for (let i = 0; i <= n; i++) { const u = i / n, a = (1 - u) * (1 - u), b = 2 * u * (1 - u), c2 = u * u; out.push([a * p0[0] + b * pc[0] + c2 * p1[0], a * p0[1] + b * pc[1] + c2 * p1[1]]); }
@@ -38,14 +38,14 @@ export function geomOf(s, t) {
   else if (s.tpl === 'cyl') genTube(ctx, s, t, 24, Math.PI * s.L / 24);
   else if (s.tpl === 'hex') genTube(ctx, s, t, 6, s.W);
   else if (s.tpl === 'lidbase') {
-    const w1 = genTray(ctx, s.L, s.W, s.H, 0, '底盒', { prefix: 'base', centerId: 'base-bottom' });
-    genTray(ctx, s.L + 2 * t + 1, s.W + 2 * t + 1, Math.max(14, s.H * 0.45), w1 + 28, '盒盖（+1mm/边 放量）', { prefix: 'lid', centerId: 'lid-top', centerMeta: { role: 'hero', surface: 'outside', up: 'top' } });
+    const w1 = genTray(ctx, s.L, s.W, s.H, 0, 'Kotak Bawah', { prefix: 'base', centerId: 'base-bottom' });
+    genTray(ctx, s.L + 2 * t + 1, s.W + 2 * t + 1, Math.max(14, s.H * 0.45), w1 + 28, 'Tutup Kotak (+1mm/sisi toleransi)', { prefix: 'lid', centerId: 'lid-top', centerMeta: { role: 'hero', surface: 'outside', up: 'top' } });
   } else if (s.tpl === 'drawer') {
-    const w1 = genTray(ctx, s.L, s.W, s.H, 0, '内盒（抽屉）', { prefix: 'drawer', centerId: 'drawer-bottom' });
+    const w1 = genTray(ctx, s.L, s.W, s.H, 0, 'Kotak Dalam (Laci)', { prefix: 'drawer', centerId: 'drawer-bottom' });
     genSleeve(ctx, s, t, w1 + 28);
   }
 
-  // 覆盖指令流重放：线型切换、节点位移（位移就地修改，保持点对象引用——arcRuns 圆弧还原依赖引用同一性）
+  // Pemutaran ulang aliran instruksi penimpaan: peralihan tipe garis, pergeseran simpul (pergeseran dimodifikasi di tempat, mempertahankan referensi objek titik - pemulihan busur arcRuns bergantung pada identitas referensi)
   Object.entries(s.typeOvr || {}).forEach(pair => { const sg = o.segs[+pair[0]]; if (sg) sg.t = pair[1]; });
   Object.entries(s.ovr || {}).forEach(pair => {
     const ix = pair[0].split('-'), sg = o.segs[+ix[0]];

@@ -1,5 +1,5 @@
-// Lightformer 风格可编辑程序化穹顶：穹顶渐变 3 色 + 柔光箱列表（矩形 w×h / energy HDR 发光强度 / tint / azimuth / elevation，朝向球心）→ PMREM
-// 由 lighting.js 旧 proceduralEnvironment/canvasGradient 迁入；DOME_PRESETS 复刻旧 CONFIG 三组（含背景幕 bg），保证旧视觉可复现
+// Kubah prosedural dapat diedit bergaya Lightformer: gradien kubah 3 warna + daftar softbox (persegi panjang w×h / intensitas pendaran HDR energy / tint / azimuth / elevation, menghadap pusat bola) → PMREM
+// Dipindahkan dari proceduralEnvironment/canvasGradient lama di lighting.js; DOME_PRESETS mereplikasi tiga grup CONFIG lama (termasuk tirai latar bg), memastikan visual lama dapat direproduksi
 import * as THREE from 'three';
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -15,12 +15,12 @@ export function canvasGradient(colors, radial = false) {
   return tex;
 }
 
-// 旧 CONFIG 四个柔光箱的几何（位置已换算为 azimuth/elevation/distance，复现旧高光形状）
+// Geometri empat softbox CONFIG lama (posisi telah dikonversi menjadi azimuth/elevation/distance, mereproduksi bentuk sorotan lama)
 const SOFTBOX_GEOMETRY = [
-  { w: 72, h: 64, azimuth: 40.6, elevation: 68.2, distance: 49.6 },   // 顶部主光箱
-  { w: 40, h: 28, azimuth: 143.7, elevation: 20.8, distance: 45.1 },  // 左侧补光板
-  { w: 36, h: 18, azimuth: 19.4, elevation: 22.6, distance: 39.1 },   // 右侧补光板
-  { w: 50, h: 3.2, azimuth: 162.1, elevation: 27.6, distance: 36.7 }  // UV 高光窄条
+  { w: 72, h: 64, azimuth: 40.6, elevation: 68.2, distance: 49.6 },   // Kotak cahaya utama atas
+  { w: 40, h: 28, azimuth: 143.7, elevation: 20.8, distance: 45.1 },  // Panel pengisi sisi kiri
+  { w: 36, h: 18, azimuth: 19.4, elevation: 22.6, distance: 39.1 },   // Panel pengisi sisi kanan
+  { w: 50, h: 3.2, azimuth: 162.1, elevation: 27.6, distance: 36.7 }  // Strip sempit sorotan UV
 ];
 const softboxesOf = (energies, tint = '#fffbf2') => SOFTBOX_GEOMETRY.map((g, i) => ({ ...g, energy: energies[i], tint }));
 
@@ -28,14 +28,14 @@ export function defaultDomeSpec() {
   return { colors: ['#d9d6cf', '#89857e', '#373531'], bg: ['#e1dfda', '#cbc9c4', '#b5b3ae'], softboxes: softboxesOf([1.7, 0.65, 0.32, 3.6]) };
 }
 
-// 三组旧影棚的穹顶规格：colors = 环境穹顶渐变，bg = 背景径向渐变幕（可选，缺省时 lighting 由背景色推导）
+// Spesifikasi kubah dari tiga studio lama: colors = gradien kubah lingkungan, bg = tirai gradien radial latar (opsional, jika tidak ada lighting diturunkan dari warna latar)
 export const DOME_PRESETS = {
   'neutral-proof': defaultDomeSpec(),
   'high-key': { colors: ['#d7d6d2', '#8f8d88', '#44423e'], bg: ['#f4f4f2', '#dcdddc', '#bfc0bf'], softboxes: softboxesOf([2.4, 1.1, 0.48, 10]) },
   'dark-craft': { colors: ['#77736b', '#292724', '#090908'], bg: ['#45433f', '#252421', '#11110f'], softboxes: softboxesOf([1.7, 0.42, 0.25, 8.5]) }
 };
 
-// 宽容合并：缺字段回落默认穹顶，数值钳制，最多 16 只柔光箱
+// Penggabungan toleran: kolom yang hilang kembali ke kubah default, nilai dijepit, maksimal 16 softbox
 export function normalizeDomeSpec(spec) {
   const d = defaultDomeSpec();
   if (!spec || typeof spec !== 'object') return d;
@@ -57,7 +57,7 @@ export function normalizeDomeSpec(spec) {
   };
 }
 
-// 穹顶 spec → PMREM 环境贴图（返回 target，调用方负责 dispose）
+// Kubah spec → peta lingkungan PMREM (mengembalikan target, pemanggil bertanggung jawab melakukan dispose)
 export function domeEnvironment(renderer, spec) {
   const dome = normalizeDomeSpec(spec);
   const pm = new THREE.PMREMGenerator(renderer), es = new THREE.Scene();
@@ -66,7 +66,7 @@ export function domeEnvironment(renderer, spec) {
   es.add(new THREE.Mesh(domeGeo, domeMat));
   for (const b of dome.softboxes) {
     const geo = new THREE.PlaneGeometry(b.w, b.h);
-    // tint 的 sRGB 数值直接当线性系数乘 energy（复刻旧 (e, e*0.985, e*0.95) 的 HDR 写法）
+    // Nilai sRGB tint langsung dikalikan dengan energy sebagai koefisien linier (mereplikasi notasi HDR lama (e, e*0.985, e*0.95))
     const n = parseInt(b.tint.slice(1), 16);
     const mat = new THREE.MeshBasicMaterial();
     mat.color.setRGB((n >> 16 & 255) / 255 * b.energy, (n >> 8 & 255) / 255 * b.energy, (n & 255) / 255 * b.energy);
