@@ -36,7 +36,7 @@ export function App() {
   const creaseSegs = creaseSegsOf(g);
   const warnN = s.layers.reduce((a, l) => a + warnsOf(l, creaseSegs, g.sbb).length, 0);
   const okAll = warnN === 0;
-  const tabs = [['structure', 'Struktur'], ['design', 'Desain'], ['three', '3D'], ['output', 'Keluaran']];
+  const tabs = [['structure', 'Struktur'], ['design', 'Desain'], ['three', '3D'], ['output', 'Ekspor']];
 
   const importProject = async () => {
     try {
