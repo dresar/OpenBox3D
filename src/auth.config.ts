@@ -4,8 +4,8 @@ export interface AuthConfig {
 }
 
 export const authConfig: AuthConfig = {
-  username: 'admin',
-  password: 'openbox3d',
+  username: 'INDAH',
+  password: 'INDAH1234',
 };
 
 export const AUTH_CONFIG = authConfig;
